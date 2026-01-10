@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JELLY_TETRIS // 莫兰迪果冻方块</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        #hud {
+            position: absolute; top: 15px; width: 100%;
+            display: flex; justify-content: center;
+            pointer-events: none; z-index: 10;
+        }
+        .score-box {
+            background: white; padding: 8px 20px;
+            border-radius: 20px; border: 2px solid var(--candy-pink);
+            color: var(--candy-pink); font-size: 1rem; font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            letter-spacing: 1px;
+        }
+
+        .modal-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(107, 94, 94, 0.15);
+            display: none; 
+            align-items: center; justify-content: center;
+            z-index: 1000; backdrop-filter: blur(12px);
+        }
+        .modal-content {
+            background: white; width: 85%; max-width: 320px; 
+            padding: 40px 30px; border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            display: flex; flex-direction: column;
+            align-items: center; text-align: center;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.1);
+        }
+
+        #canvas-wrap { background: var(--bg-soft); }
+        canvas { 
+            background: #EBE7E4; /* 燕麦乳酪底色 */
+            border: 8px solid white;
+            border-radius: 35px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="candy-bg"></div>
+    <a href="index.html" class="back-home" id="back-link">🏠 返回</a>
+
+    <div id="hud">
+        <div class="score-box">🍮 甜甜分: <span id="score">0</span></div>
+    </div>
+
+    <div id="canvas-wrap">
+        <canvas id="gameCanvas" width="300" height="600"></canvas>
+    </div>
+
+    <div id="over-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 style="color: var(--candy-pink); font-size: 1.6rem; margin: 0 0 10px;">哎呀！堆满啦 🍮</h2>
+            <p style="font-size: 0.95rem; color: #998888; margin-bottom: 25px;">获得了 <span id="final-score" style="color:var(--candy-pink); font-weight:bold;">0</span> 积分</p>
+            <button class="cute-btn wide" onclick="resetGame()">重新开动！</button>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="ctrl-panel">
+            <div class="cute-btn btn-mint" id="btn-left">◀</div>
+            <div class="cute-btn btn-mint" id="btn-right">▶</div>
+        </div>
+        <div class="ctrl-panel">
+            <div class="cute-btn" id="btn-rotate">↻</div>
+            <div class="cute-btn btn-mint" id="btn-drop">▼</div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. 糖果音效引擎 (防干扰处理) ---
+        const CandyAudio = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            },
+            playClick() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.1);
+            },
+            playCollect() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.2);
+            },
+            playGameOver() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(50, this.ctx.currentTime + 0.5);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.5);
+            }
+        };
+
+        // --- 2. 游戏逻辑 ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const modal = document.getElementById('over-modal');
+
+        const COLS = 10; const ROWS = 20; const BLOCK = 30;
+        let board, score, isGameOver, lastTick, tickSpeed, curr;
+
+        const COLORS = [null, '#D99FA9', '#A1B5D0', '#9BB7AD', '#E6D5B8', '#B4A7AF', '#C9A7AC', '#ADB8A6'];
+        const SHAPES = [
+            null,
+            [[1, 1, 1, 1]], [[1, 1], [1, 1]], [[0, 1, 0], [1, 1, 1]],
+            [[1, 1, 0], [0, 1, 1]], [[0, 1, 1], [1, 1, 0]], [[1, 0, 0], [1, 1, 1]], [[0, 0, 1], [1, 1, 1]],
+        ];
+
+        function init() {
+            board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+            score = 0; isGameOver = false; tickSpeed = 800; lastTick = performance.now();
+            scoreEl.innerText = score; modal.style.display = 'none';
+            newPiece();
+            requestAnimationFrame(loop);
+        }
+
+        function newPiece() {
+            const id = Math.floor(Math.random() * (SHAPES.length - 1)) + 1;
+            curr = { s: SHAPES[id], color: id, x: Math.floor(COLS / 2) - Math.floor(SHAPES[id][0].length / 2), y: 0 };
+            if (collide(curr.x, curr.y, curr.s)) {
+                isGameOver = true;
+                CandyAudio.playGameOver();
+                document.getElementById('final-score').innerText = score;
+                modal.style.display = 'flex';
+            }
+        }
+
+        function collide(nx, ny, ns) {
+            return ns.some((row, dy) => row.some((v, dx) => {
+                if (v === 0) return false;
+                let x = nx + dx; let y = ny + dy;
+                return x < 0 || x >= COLS || y >= ROWS || (y >= 0 && board[y][x]);
+            }));
+        }
+
+        // --- 核心修复：防止音效重叠触发 ---
+        const bind = (id, fn) => {
+            const el = document.getElementById(id);
+            // 只监听 touchstart (移动端) 或 mousedown (PC端)，二选一触发
+            const handleAction = (e) => {
+                e.preventDefault();
+                if(isGameOver) return;
+                CandyAudio.playClick(); // 只播放一次
+                fn();
+                draw();
+            };
+            
+            // 使用 pointerdown 替代鼠标和触摸，它能自动处理兼容并防止双跳
+            el.addEventListener('pointerdown', handleAction);
+        };
+
+        bind('btn-left', () => { if (!collide(curr.x - 1, curr.y, curr.s)) curr.x--; });
+        bind('btn-right', () => { if (!collide(curr.x + 1, curr.y, curr.s)) curr.x++; });
+        bind('btn-drop', () => { if (!collide(curr.x, curr.y + 1, curr.s)) curr.y++; });
+        bind('btn-rotate', () => {
+            let rs = curr.s[0].map((_, i) => curr.s.map(row => row[i]).reverse());
+            if (!collide(curr.x, curr.y, rs)) curr.s = rs;
+        });
+
+        document.getElementById('back-link').onclick = () => CandyAudio.playClick();
+
+        function loop(t) {
+            if (isGameOver) return;
+            requestAnimationFrame(loop);
+            
+            if (t - lastTick > tickSpeed) {
+                if (!collide(curr.x, curr.y + 1, curr.s)) {
+                    curr.y++;
+                } else {
+                    freeze();
+                    clearLines();
+                    newPiece();
+                }
+                lastTick = t;
+            }
+            draw(); // 确保每一帧都在重绘，保证画面顺畅
+        }
+
+        function freeze() {
+            curr.s.forEach((row, dy) => row.forEach((v, dx) => {
+                if (v) board[curr.y + dy][curr.x + dx] = curr.color;
+            }));
+        }
+
+        function clearLines() {
+            let lines = 0;
+            for (let y = ROWS - 1; y >= 0; y--) {
+                if (board[y].every(v => v !== 0)) {
+                    board.splice(y, 1);
+                    board.unshift(Array(COLS).fill(0));
+                    lines++;
+                    y++;
+                }
+            }
+            if (lines > 0) {
+                score += lines * 100;
+                scoreEl.innerText = score;
+                CandyAudio.playCollect(); // 只在消行时播放一次
+                if (tickSpeed > 200) tickSpeed -= 15;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackgroundGrid();
+            
+            board.forEach((row, y) => row.forEach((v, x) => {
+                if (v) drawJellyBlock(x, y, COLORS[v]);
+            }));
+            if (curr.s) {
+                curr.s.forEach((row, dy) => row.forEach((v, dx) => {
+                    if (v) drawJellyBlock(curr.x + dx, curr.y + dy, COLORS[curr.color]);
+                }));
+            }
+        }
+
+        function drawBackgroundGrid() {
+            ctx.strokeStyle = "rgba(107, 94, 94, 0.05)"; 
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= COLS; x++) {
+                ctx.beginPath(); ctx.moveTo(x * BLOCK, 0); ctx.lineTo(x * BLOCK, canvas.height); ctx.stroke();
+            }
+            for (let y = 0; y <= ROWS; y++) {
+                ctx.beginPath(); ctx.moveTo(0, y * BLOCK); ctx.lineTo(canvas.width, y * BLOCK); ctx.stroke();
+            }
+        }
+
+        function drawJellyBlock(x, y, color) {
+            const px = x * BLOCK; const py = y * BLOCK;
+            const r = 8;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(px + 2, py + 2, BLOCK - 4, BLOCK - 4, r);
+            else ctx.rect(px + 2, py + 2, BLOCK - 4, BLOCK - 4);
+            ctx.fill();
+            ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+            ctx.beginPath(); ctx.ellipse(px + 10, py + 10, 5, 3, Math.PI / 4, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+        }
+
+        function resetGame() {
+            CandyAudio.playClick();
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>
