@@ -278,12 +278,13 @@
                     ctx.font = "40px Arial"; ctx.fillText("🎂", p.x + p.w/2 - 20, p.y - 10);
                     ctx.fillStyle = "var(--candy-pink)"; ctx.font = "bold 20px Arial"; ctx.fillText("GOAL!!", p.x + 100, p.y + 45);
                 } else {
-                    ctx.fillStyle = p.type === 'ground' ? "#D4A373" : "#B2F7EF";
+                    ctx.fillStyle = p.type === 'ground' ? "#9BB7AD" : "#A89A90";
                     drawRoundedRect(ctx, p.x, p.y, p.w, p.h, 10);
                     ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.strokeRect(p.x+5, p.y+5, p.w-10, p.h-10);
                 }
             });
 
+            ctx.font = "40px Arial";
             items.forEach(it => { if(!it.collected) ctx.fillText("⭐", it.x, it.y); });
 
             ctx.fillStyle = "#D99FA9"; drawRoundedRect(ctx, player.x, player.y, player.w, player.h, 8);
