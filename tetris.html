@@ -2,118 +2,129 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>JELLY_TETRIS // 莫兰迪果冻方块</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* --- 1. 核心居中布局修正 --- */
-        
-        body {
+        /* --- 1. 绝对居中布局：核心修正 --- */
+        html, body {
             margin: 0;
             padding: 0;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center; /* 关键：全屏垂直居中 */
-            background-color: var(--bg-main);
-            overflow: hidden;
-        }
-
-        /* 强制覆盖 style.css 可能存在的干扰样式 */
-        #canvas-wrap {
-            height: auto !important;
-            width: auto !important;
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            justify-content: center !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: transparent !important;
-            position: relative;
-        }
-
-        /* 游戏主体组合：Canvas + 按钮 */
-        .game-main-bundle {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px; /* 画布和按钮之间的间距 */
             width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-main);
+            /* 使用 Flex 确保内容在屏幕正中心 */
+            display: flex;
+            align-items: center; 
+            justify-content: center;
+            touch-action: none;
+            -webkit-user-select: none;
+        }
+
+        /* 背景波点保持在底层 */
+        .candy-bg { position: fixed; z-index: -1; }
+
+        /* 顶部和返回按钮：设为绝对定位，不参与中心对齐的计算 */
+        .back-home {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+
+        #hud {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* --- 核心：游戏组合胶囊 --- */
+        .game-assembly {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            /* 移除可能导致偏移的 margin */
+            margin: 0; 
+        }
+
+        #canvas-wrap {
+            /* 强制重置 style.css 里的样式 */
+            width: auto !important;
+            height: auto !important;
+            display: block !important;
+            padding: 0 !important;
+            margin: 0 !important;
         }
 
         canvas { 
             background: #EBE7E4; 
             border: 6px solid white;
             border-radius: 30px;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.05);
-            /* 适配手机端高度：确保整体在屏幕内居中 */
-            max-height: 55vh; 
-            max-width: 70vw;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+            /* 针对手机竖屏优化的显示比例 */
+            max-height: 52vh; 
+            max-width: 75vw;
             width: auto;
             height: auto;
             display: block;
         }
 
-        /* 操作按钮区：紧贴画布下方 */
+        /* 操作按钮：紧紧贴在画布下面 */
         .tight-controls {
+            margin-top: 15px; /* 画布与按钮的紧凑间距 */
             display: flex;
-            flex-direction: row;
-            justify-content: center;
             gap: 12px;
-            width: 100%;
-            padding: 5px;
+            padding: 0;
             pointer-events: auto;
         }
 
-        /* 按钮样式微调 */
+        /* 按钮样式：保持莫兰迪清新感 */
         .cute-btn {
             width: 62px; 
             height: 62px; 
             border: 4px solid white;
-            background: rgba(217, 159, 169, 0.75); 
+            background: rgba(217, 159, 169, 0.8); 
             border-radius: 20px;
-            font-size: 1.6rem; 
+            font-size: 1.5rem; 
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 5px 0px rgba(180, 140, 140, 0.2);
+            box-shadow: 0 4px 0px rgba(180, 140, 140, 0.2);
             backdrop-filter: blur(5px);
             cursor: pointer;
             transition: transform 0.1s;
         }
         
         .btn-mint {
-            background: rgba(155, 183, 173, 0.75);
-            box-shadow: 0 5px 0px rgba(130, 150, 140, 0.2);
+            background: rgba(155, 183, 173, 0.8);
+            box-shadow: 0 4px 0px rgba(130, 150, 140, 0.2);
         }
 
         .cute-btn:active {
-            transform: translateY(3px);
-            box-shadow: 0 2px 0px rgba(0,0,0,0.1);
+            transform: translateY(2px);
+            box-shadow: 0 1px 0px rgba(0,0,0,0.1);
         }
 
-        /* 其他UI元素 */
-        #hud {
-            position: fixed;
-            top: 20px;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            pointer-events: none;
-            z-index: 100;
-        }
-
-        .back-home { position: absolute; top: 20px; left: 20px; z-index: 1000; font-weight: bold; }
-
+        /* 弹窗完美居中 */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(107, 94, 94, 0.3);
             display: none; align-items: center; justify-content: center;
             z-index: 2000; backdrop-filter: blur(8px);
+        }
+        .modal-content {
+            background: white; padding: 30px; border-radius: 40px;
+            text-align: center; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.1);
+            width: 80%; max-width: 300px;
+            border: 1px solid rgba(255,255,255,0.5);
         }
     </style>
 </head>
@@ -121,38 +132,35 @@
     <div class="candy-bg"></div>
     <a href="index.html" class="back-home" id="back-link">🏠 返回</a>
 
-    <!-- 顶部积分 -->
     <div id="hud">
-        <div class="score-box">🍮 甜甜分: <span id="score">0</span></div>
+        <div class="score-box">🍮 甜美分: <span id="score">0</span></div>
     </div>
 
-    <!-- 游戏整体容器：在屏幕中完美居中 -->
-    <div id="canvas-wrap">
-        <div class="game-main-bundle">
-            <!-- 画布区 -->
+    <!-- 游戏整体包：直接受 body 的 Flex 居中控制 -->
+    <div class="game-assembly">
+        <div id="canvas-wrap">
             <canvas id="gameCanvas" width="300" height="600"></canvas>
+        </div>
 
-            <!-- 紧贴下方的操作按钮 -->
-            <div class="tight-controls">
-                <div class="cute-btn btn-mint" id="btn-left">←</div>
-                <div class="cute-btn btn-mint" id="btn-right">→</div>
-                <div class="cute-btn" id="btn-rotate">↻</div>
-                <div class="cute-btn btn-mint" id="btn-drop">↓</div>
-            </div>
+        <div class="tight-controls">
+            <div class="cute-btn btn-mint" id="btn-left">←</div>
+            <div class="cute-btn btn-mint" id="btn-right">→</div>
+            <div class="cute-btn" id="btn-rotate">↻</div>
+            <div class="cute-btn btn-mint" id="btn-drop">↓</div>
         </div>
     </div>
 
     <!-- 结算弹窗 -->
     <div id="over-modal" class="modal-overlay">
         <div class="modal-content">
-            <h2 style="color: var(--candy-pink); margin-bottom: 5px;">哎呀！堆满啦 🍮</h2>
-            <p style="color: #998888; font-size: 0.9rem; margin-bottom: 20px;">最终得分: <span id="final-score" style="color:var(--candy-pink); font-weight:bold;">0</span></p>
-            <button class="cute-btn wide" onclick="resetGame()" style="width: 100%; height: 50px; border-radius: 25px; font-size: 1rem;">再来一局！</button>
+            <h2 style="color: var(--candy-pink); font-size: 1.6rem; margin-bottom: 8px;">哎呀！堆满啦 🍮</h2>
+            <p style="color: #998888; font-size: 1rem; margin-bottom: 25px;">获得了 <span id="final-score" style="color:var(--candy-pink); font-weight:bold;">0</span> 积分</p>
+            <button class="cute-btn wide" onclick="resetGame()" style="width: 100%; height: 55px; border-radius: 30px; font-size: 1.1rem;">再来一局！</button>
         </div>
     </div>
 
     <script>
-        // --- 音效引擎 ---
+        // --- 音效引擎 (Web Audio API) ---
         const CandyAudio = {
             ctx: null,
             init() {
@@ -218,11 +226,10 @@
 
         const bind = (id, fn) => {
             const el = document.getElementById(id);
-            const handleAction = (e) => {
+            el.addEventListener('pointerdown', (e) => {
                 e.preventDefault(); if(isGameOver) return;
                 CandyAudio.playClick(); fn(); draw();
-            };
-            el.addEventListener('pointerdown', handleAction);
+            });
         };
 
         bind('btn-left', () => { if (!collide(curr.x - 1, curr.y, curr.s)) curr.x--; });
@@ -259,16 +266,15 @@
             if (lines > 0) {
                 score += lines * 100; scoreEl.innerText = score;
                 CandyAudio.playCollect();
-                if (tickSpeed > 200) tickSpeed -= 20;
+                if (tickSpeed > 200) tickSpeed -= 25;
             }
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.strokeStyle = "rgba(107, 94, 94, 0.05)"; ctx.lineWidth = 1;
+            ctx.strokeStyle = "rgba(107, 94, 94, 0.04)"; ctx.lineWidth = 1;
             for (let x = 0; x <= COLS; x++) { ctx.beginPath(); ctx.moveTo(x * BLOCK, 0); ctx.lineTo(x * BLOCK, canvas.height); ctx.stroke(); }
             for (let y = 0; y <= ROWS; y++) { ctx.beginPath(); ctx.moveTo(0, y * BLOCK); ctx.lineTo(canvas.width, y * BLOCK); ctx.stroke(); }
-            
             board.forEach((row, y) => row.forEach((v, x) => { if (v) drawJellyBlock(x, y, COLORS[v]); }));
             if (curr.s) curr.s.forEach((row, dy) => row.forEach((v, dx) => { if (v) drawJellyBlock(curr.x + dx, curr.y + dy, COLORS[curr.color]); }));
         }
@@ -281,7 +287,7 @@
             ctx.fill();
             ctx.fillStyle = "rgba(255, 255, 255, 0.25)"; ctx.beginPath(); 
             ctx.ellipse(px+10, py+10, 5, 3, Math.PI/4, 0, Math.PI*2); ctx.fill();
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.4)"; ctx.lineWidth = 1.2; ctx.stroke();
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.35)"; ctx.lineWidth = 1.2; ctx.stroke();
         }
 
         function resetGame() { CandyAudio.playClick(); init(); }
