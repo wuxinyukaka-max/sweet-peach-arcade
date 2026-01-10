@@ -2,39 +2,45 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <!-- 允许缩放，确保用户可以手动缩小回来 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <title>JELLY_TETRIS // 莫兰迪果冻方块</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* --- 核心布局：优雅居中且紧凑 --- */
+        /* --- 1. 布局优化：让内容随缩放保持协调 --- */
         body {
             margin: 0; padding: 0;
-            width: 100%; height: 100vh;
+            width: 100%; min-height: 100vh;
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
             background-color: var(--bg-main);
-            overflow: hidden;
+            /* 允许缩放和顺畅滚动，但优化点击体验 */
             touch-action: manipulation; 
+            overflow-y: auto; /* 允许纵向溢出时滚动，防止看不见按钮 */
         }
 
-        #hud {
-            position: absolute; top: 20px; width: 100%;
-            display: flex; justify-content: center;
-            pointer-events: none; z-index: 100;
+        /* 积分栏：改为随游戏区域联动，不再固定在屏幕顶端死不回头 */
+        .score-container {
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: center;
+            width: 100%;
         }
         .score-box {
             background: white; padding: 6px 20px;
             border-radius: 15px; border: 2px solid var(--candy-pink);
-            color: var(--candy-pink); font-size: 0.9rem; font-weight: bold;
+            color: var(--candy-pink); font-size: 1rem; font-weight: bold;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         }
 
         .back-home { position: absolute; top: 15px; left: 15px; z-index: 110; }
 
-        .game-capsule {
+        /* 核心组合包 */
+        .game-bundle {
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
-            width: 100%; gap: 15px; 
+            width: 100%; gap: 10px;
+            padding: 20px 0;
         }
 
         #canvas-wrap {
@@ -48,13 +54,14 @@
             border: 6px solid white;
             border-radius: 28px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-            max-height: 52vh; max-width: 70vw;
+            /* 调整画布在屏幕上的比例 */
+            max-height: 50vh; max-width: 75vw;
             width: auto; height: auto; display: block;
         }
 
         .button-panel {
             display: flex; justify-content: center;
-            gap: 10px; padding: 5px; pointer-events: auto;
+            gap: 10px; padding: 10px; pointer-events: auto;
         }
 
         .cute-btn {
@@ -67,18 +74,10 @@
             box-shadow: 0 4px 0px rgba(180, 140, 140, 0.2);
             backdrop-filter: blur(5px);
             cursor: pointer;
-            touch-action: manipulation;
         }
         
-        .btn-mint {
-            background: rgba(155, 183, 173, 0.8);
-            box-shadow: 0 4px 0px rgba(130, 150, 140, 0.2);
-        }
-
-        .cute-btn:active {
-            transform: translateY(2px);
-            box-shadow: 0 1px 0px rgba(0,0,0,0.1);
-        }
+        .btn-mint { background: rgba(155, 183, 173, 0.8); box-shadow: 0 4px 0px rgba(130, 150, 140, 0.2); }
+        .cute-btn:active { transform: translateY(2px); box-shadow: 0 1px 0px rgba(0,0,0,0.1); }
 
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -86,23 +85,19 @@
             display: none; align-items: center; justify-content: center;
             z-index: 2000; backdrop-filter: blur(8px);
         }
-        .modal-content {
-            background: white; padding: 30px; border-radius: 40px;
-            text-align: center; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.1);
-            width: 80%; max-width: 300px;
-            border: 1px solid rgba(255,255,255,0.5);
-        }
     </style>
 </head>
 <body>
     <div class="candy-bg"></div>
     <a href="index.html" class="back-home" id="back-link">🏠 返回</a>
 
-    <div id="hud">
-        <div class="score-box">🍮 甜美分: <span id="score">0</span></div>
-    </div>
+    <!-- 游戏整体容器 -->
+    <div class="game-bundle">
+        <!-- 积分栏现在放在游戏包内部 -->
+        <div class="score-container">
+            <div class="score-box">🍮 甜甜分: <span id="score">0</span></div>
+        </div>
 
-    <div class="game-capsule">
         <div id="canvas-wrap">
             <canvas id="gameCanvas" width="300" height="600"></canvas>
         </div>
@@ -124,6 +119,8 @@
     </div>
 
     <script>
+        /* --- 已移除 JS 的禁止缩放逻辑 --- */
+
         // --- 音效引擎 ---
         const CandyAudio = {
             ctx: null,
@@ -198,25 +195,14 @@
 
         bind('btn-left', () => { if (!collide(curr.x - 1, curr.y, curr.s)) curr.x--; });
         bind('btn-right', () => { if (!collide(curr.x + 1, curr.y, curr.s)) curr.x++; });
-        
-        // --- 修改逻辑：点击向下按钮直接掉落到底部 ---
         bind('btn-drop', () => { 
-            // 只要下方没有碰撞，就一直增加 y 坐标
-            while (!collide(curr.x, curr.y + 1, curr.s)) {
-                curr.y++;
-            }
-            // 落地后的逻辑
-            freeze();
-            clearLines();
-            newPiece();
+            while (!collide(curr.x, curr.y + 1, curr.s)) { curr.y++; }
+            freeze(); clearLines(); newPiece();
         });
-
         bind('btn-rotate', () => {
             let rs = curr.s[0].map((_, i) => curr.s.map(row => row[i]).reverse());
             if (!collide(curr.x, curr.y, rs)) curr.s = rs;
         });
-
-        document.getElementById('back-link').onclick = () => CandyAudio.playClick();
 
         function loop(t) {
             if (isGameOver) return;
@@ -236,7 +222,7 @@
             for (let y = ROWS - 1; y >= 0; y--) {
                 if (board[y].every(v => v !== 0)) {
                     board.splice(y, 1); board.unshift(Array(COLS).fill(0));
-                    lines++; y++;
+                    lines++; y--;
                 }
             }
             if (lines > 0) {
