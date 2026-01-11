@@ -217,7 +217,7 @@
                 if (dog.x === player.x && dog.y === player.y) {
                     timeLeft = Math.max(0, timeLeft - 5);
                     // --- 提示词优化：更大更红 ---
-                    messageTip = { text: "被狗咬啦！时间-5s 🐕", timer: 80 };
+                    messageTip = { text: "被狗咬啦！时间-5s 🐕", timer: 100 };
                     dogs.splice(index, 1); CandyAudio.play('bark');
                 }
             });
@@ -370,7 +370,7 @@
             // F. 飘字提示优化
             if (messageTip.timer > 0) {
                 ctx.fillStyle = "#8a515b"; // 莫兰迪红
-                ctx.font = "bold 20px Quicksand, Arial"; // 加大字号
+                ctx.font = "bold 18px Quicksand, Arial"; // 加大字号
                 ctx.textAlign = "center";
                 ctx.fillText(messageTip.text, charX, charY - 40 - (50 - messageTip.timer));
                 messageTip.timer--;
