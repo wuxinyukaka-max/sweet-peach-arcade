@@ -81,19 +81,19 @@
 
         const GRAVITY = 0.5, SPEED = 6;
         const PLAY_AREA_TOP = 110;
-        const PLAY_AREA_BOTTOM = 720; // 由于按钮变细，活动区域下移
+        const PLAY_AREA_BOTTOM = 750; // 由于按钮变细，活动区域下移
 
-        let player, platforms, layers, isGameOver, keys = { L:0, R:0 }, scrollSpeed = 2, animationId = null;
+        let player, platforms, layers, isGameOver, keys = { L:0, R:0 }, scrollSpeed = 1.5, animationId = null;
 
         // --- 细长胶囊型按钮定义 ---
         const uiBtns = {
-            left:  { x: 30,  y: 740, w: 160, h: 42, icon: '←', active: false, color: '#9BB7AD' },
-            right: { x: 210, y: 740, w: 160, h: 42, icon: '→', active: false, color: '#9BB7AD' }
+            left:  { x: 30,  y: 735, w: 160, h: 50, icon: '⬅', active: false, color: '#9BB7AD' },
+            right: { x: 210, y: 735, w: 160, h: 50, icon: '➡', active: false, color: '#9BB7AD' }
         };
 
         function init() {
             if (animationId) cancelAnimationFrame(animationId);
-            isGameOver = false; layers = 0; scrollSpeed = 2;
+            isGameOver = false; layers = 0; scrollSpeed = 1.5;
             keys = { L:0, R:0 };
             player = { x: 180, y: 300, w: 32, h: 32, vx: 0, vy: 0 };
             modal.style.display = 'none';
@@ -183,7 +183,7 @@
                 platforms.shift();
                 layers++;
                 spawnPlatform();
-                scrollSpeed = 2 + (layers * 0.04);
+                scrollSpeed = 1.5 + (layers * 0.02);
             }
 
             if (player.y < PLAY_AREA_TOP) endGame("碰到钉板啦！🍓", `你坚持到了第 ${layers} 层`);
@@ -207,7 +207,7 @@
             drawRoundedRect(ctx, 130, 25, 140, 40, 20);
             ctx.fillStyle = "#D99FA9";
             ctx.font = "bold 16px Quicksand, Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.fillText(`L A Y E R : ${layers}`, 200, 47);
+            ctx.fillText(`坚持层数 : ${layers}`, 200, 47);
 
             // 3. 游戏活动区背景
             ctx.fillStyle = "rgba(255,255,255,0.2)";
@@ -245,7 +245,7 @@
                 
                 // 按钮文字
                 ctx.fillStyle = btn.active ? "white" : "#6B5E5E";
-                ctx.font = "bold 15px Arial";
+                ctx.font = "bold 24px Arial";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.fillText(btn.icon, btn.x + btn.w/2, btn.y + btn.h/2);
