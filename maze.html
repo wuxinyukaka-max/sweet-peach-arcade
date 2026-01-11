@@ -79,7 +79,7 @@
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const modal = document.getElementById('over-modal');
 
-        const CELL = 16, COLS = 23, ROWS = 37; 
+        const CELL = 16, COLS = 23, ROWS = 35; 
         const GAME_X_OFFSET = (400 - COLS * CELL) / 2; 
         const GAME_Y_OFFSET = 90; 
 
@@ -89,10 +89,10 @@
         const MOVE_INTERVAL = 95;
 
         const uiBtns = {
-            L: { x: 65,  y: 710, w: 80, h: 70, img: iconAssets.left,  move: {x: -1, y: 0}, color: '#9BB7AD' },
-            R: { x: 255, y: 710, w: 80, h: 70, img: iconAssets.right, move: {x: 1, y: 0},  color: '#9BB7AD' },
-            U: { x: 160, y: 695, w: 80, h: 45, img: iconAssets.up,    move: {x: 0, y: -1}, color: '#D99FA9' },
-            D: { x: 160, y: 750, w: 80, h: 45, img: iconAssets.down,  move: {x: 0, y: 1},  color: '#9BB7AD' }
+            L: { x: 65,  y: 670, w: 80, h: 70, img: iconAssets.left,  move: {x: -1, y: 0}, color: '#9BB7AD' },
+            R: { x: 255, y: 670, w: 80, h: 70, img: iconAssets.right, move: {x: 1, y: 0},  color: '#9BB7AD' },
+            U: { x: 160, y: 650, w: 80, h: 50, img: iconAssets.up,    move: {x: 0, y: -1}, color: '#D99FA9' },
+            D: { x: 160, y: 710, w: 80, h: 50, img: iconAssets.down,  move: {x: 0, y: 1},  color: '#9BB7AD' }
         };
 
         function init() {
