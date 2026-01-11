@@ -2,117 +2,64 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>SWEET_MAZE // 曲奇迷宫</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>SWEET_MAZE // 莫兰迪一排式控制版</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* --- 1. 竖屏居中布局 --- */
-        body {
-            margin: 0; padding: 0;
-            width: 100%; height: 100vh;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            background-color: var(--bg-main);
-            overflow: hidden;
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            background-color: var(--bg-main); overflow: hidden;
             touch-action: none;
         }
 
-        /* 顶部信息栏 - 绝对定位 */
-        #hud {
-            position: absolute; top: 20px; width: 100%;
-            display: flex; justify-content: center;
-            pointer-events: none; z-index: 100;
-        }
-        .timer-box {
-            background: white; padding: 8px 25px;
-            border-radius: 20px; border: 2.5px solid var(--candy-pink);
-            color: var(--candy-pink); font-size: 1rem; font-weight: bold;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        #game-container {
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+            width: 100%; height: 100%;
         }
 
-        /* 游戏整体容器 */
-        .game-capsule {
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            width: 100%; gap: -30px;
-        }
-
-        #canvas-wrap {
-            height: auto !important;
-            display: flex !important;
-            justify-content: center;
-        }
-
-        canvas { 
-            background: #EBE7E4; /* 莫兰迪底色 */
+        canvas {
+            background: #EBE7E4;
             border: 6px solid white;
-            border-radius: 35px;
-            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.05);
-            /* 竖屏优化比例 */
-            max-height: 50vh; 
-            max-width: 85vw;
+            border-radius: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            max-width: 95vw;
+            max-height: 94vh;
             width: auto; height: auto;
             display: block;
         }
 
-        /* 控制器：跟随文档流 */
-        .controls {
-            position: static !important;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            pointer-events: auto;
-        }
+        /* 隐藏旧组件 */
+        #hud, .controls, .button-panel { display: none !important; }
+        .back-home { position: absolute; top: 20px; left: 20px; z-index: 1000; font-weight: bold; }
 
-        /* 结算弹窗 - 完美居中 */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(107, 94, 94, 0.2);
+            background: rgba(107, 94, 94, 0.3);
             display: none; align-items: center; justify-content: center;
-            z-index: 2000; backdrop-filter: blur(8px);
+            z-index: 2000; backdrop-filter: blur(10px);
         }
         .modal-content {
-            background: white; width: 85%; max-width: 320px; padding: 40px 30px;
-            border-radius: 45px; border: 1px solid rgba(255,255,255,0.5);
-            display: flex; flex-direction: column; align-items: center; text-align: center;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.1);
+            background: white; width: 80%; max-width: 300px; padding: 30px;
+            border-radius: 40px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.1);
         }
-        .modal-content h2 { font-size: 1.6rem; color: var(--candy-pink); margin: 0 0 10px 0; }
-        .modal-content p { font-size: 1rem; color: #998888; margin-bottom: 25px; }
-        
-        .back-home { position: absolute; top: 20px; left: 20px; z-index: 110; }
     </style>
 </head>
 <body>
     <div class="candy-bg"></div>
-    <a href="index.html" class="back-home" id="back-link">🏠 放弃</a>
+    <a href="index.html" class="back-home" id="back-link">🏠 返回</a>
 
-    <div id="hud">
-        <div class="timer-box">剩余能量: <span id="time-left">60</span>s</div>
+    <div id="game-container">
+        <!-- 400x800 一体化比例 -->
+        <canvas id="gameCanvas" width="400" height="800"></canvas>
     </div>
 
-    <!-- 游戏核心包 -->
-    <div class="game-capsule">
-        <div id="canvas-wrap">
-            <!-- 纵向比例：21x25 网格 -->
-            <canvas id="gameCanvas" width="420" height="500"></canvas>
-        </div>
-
-        <div class="controls">
-            <div class="ctrl-panel">
-                <div id="joy-base" class="joy-base">
-                    <div id="joy-stick" class="joy-stick"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 弹窗结构 -->
     <div id="over-modal" class="modal-overlay">
         <div class="modal-content">
-            <h2 id="modal-title">哎呀！</h2>
-            <p id="modal-desc">能量耗尽了 🍩</p>
-            <button class="cute-btn wide" onclick="restartGame()">再来一次</button>
+            <h2 id="modal-title" style="color: var(--candy-pink); margin-bottom: 5px; font-size: 1.5rem;">能量耗尽 🍩</h2>
+            <p id="modal-desc" style="color: #998888; font-size: 0.9rem; margin-bottom: 25px;">迷宫太复杂了...</p>
+            <button class="cute-btn wide" onclick="handleReset()" style="width: 100%; height: 50px; border-radius: 25px; font-size: 1rem;">重置能量</button>
         </div>
     </div>
 
@@ -121,109 +68,182 @@
         const CandyAudio = {
             ctx: null,
             init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (this.ctx.state === 'suspended') this.ctx.resume(); },
-            playClick() { this.init(); const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.type='sine'; o.frequency.setValueAtTime(800,this.ctx.currentTime); o.frequency.exponentialRampToValueAtTime(100,this.ctx.currentTime+0.1); g.gain.setValueAtTime(0.2,this.ctx.currentTime); o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(this.ctx.currentTime+0.1); },
-            playCollect() { this.init(); const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.type='triangle'; o.frequency.setValueAtTime(400,this.ctx.currentTime); o.frequency.exponentialRampToValueAtTime(1200,this.ctx.currentTime+0.2); g.gain.setValueAtTime(0.15,this.ctx.currentTime); o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(this.ctx.currentTime+0.2); },
-            playGameOver() { this.init(); const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.type='square'; o.frequency.setValueAtTime(300,this.ctx.currentTime); o.frequency.linearRampToValueAtTime(50,this.ctx.currentTime+0.5); g.gain.setValueAtTime(0.08,this.ctx.currentTime); o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(this.ctx.currentTime+0.5); }
+            play(type) {
+                this.init(); const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.connect(g); g.connect(this.ctx.destination);
+                const n = this.ctx.currentTime;
+                if(type==='click'){ o.frequency.setValueAtTime(800,n); o.frequency.exponentialRampToValueAtTime(100,n+0.1); g.gain.setValueAtTime(0.12,n); }
+                if(type==='ding'){ o.type='triangle'; o.frequency.setValueAtTime(400,n); o.frequency.exponentialRampToValueAtTime(1200,n+0.2); g.gain.setValueAtTime(0.1,n); }
+                if(type==='sad'){ o.type='square'; o.frequency.setValueAtTime(200,n); o.frequency.linearRampToValueAtTime(50,n+0.5); g.gain.setValueAtTime(0.08,n); }
+                o.start(); o.stop(n + 0.5);
+            }
         };
 
-        // --- 2. 游戏配置 ---
+        // --- 2. 核心配置：最大化迷宫区域 ---
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
-        const timerEl = document.getElementById('time-left'), modal = document.getElementById('over-modal');
+        const modal = document.getElementById('over-modal');
 
-        const ROWS = 25; const COLS = 21; const CELL = 20;
-        let grid, player, exit, timeLeft, isGameOver, joyX, joyY, timerInterval, lastMove = 0;
+        const COLS = 31; 
+        const ROWS = 51; // 极大化迷宫高度
+        const CELL = 12; 
+        const GAME_X_OFFSET = 14; 
+        const GAME_Y_OFFSET = 80; // 顶部计时器下方即开始
 
-        function initGame() {
+        let grid, player, exit, timeLeft, isGameOver, timerInterval;
+        let activeMoveDir = null; 
+        let lastMoveTimestamp = 0;
+        const MOVE_INTERVAL = 80; // 进一步加快连续移动速度
+
+        // 一排式按钮定义：按顺序 左、右、上、下
+        const uiBtns = {
+            L: { x: 25,  y: 710, w: 80, h: 70, icon: '←', move: {x: -1, y: 0}, color: '#9BB7AD' },
+            R: { x: 115, y: 710, w: 80, h: 70, icon: '→', move: {x: 1, y: 0}, color: '#9BB7AD' },
+            U: { x: 205, y: 710, w: 80, h: 70, icon: '↑', move: {x: 0, y: -1}, color: '#D99FA9' },
+            D: { x: 295, y: 710, w: 80, h: 70, icon: '↓', move: {x: 0, y: 1}, color: '#D99FA9' }
+        };
+
+        function init() {
             grid = []; player = { x: 1, y: 1 }; exit = { x: COLS - 2, y: ROWS - 2 };
-            timeLeft = 60; isGameOver = false; joyX = 0; joyY = 0;
-            modal.style.display = 'none'; timerEl.innerText = timeLeft;
-            genMaze(); startTimer(); requestAnimationFrame(loop);
+            timeLeft = 60; isGameOver = false; activeMoveDir = null;
+            modal.style.display = 'none';
+            genMaze();
+            startTimer();
+            requestAnimationFrame(loop);
         }
 
         function genMaze() {
             grid = Array(ROWS).fill().map(() => Array(COLS).fill(1));
             function walk(x, y) {
                 grid[y][x] = 0;
-                const dirs = [[0, -2], [0, 2], [-2, 0], [2, 0]].sort(() => Math.random() - 0.5);
-                for (let [dx, dy] of dirs) {
+                const d = [[0, -2], [0, 2], [-2, 0], [2, 0]].sort(() => Math.random() - 0.5);
+                for (let [dx, dy] of d) {
                     let nx = x + dx, ny = y + dy;
                     if (nx > 0 && nx < COLS - 1 && ny > 0 && ny < ROWS - 1 && grid[ny][nx] === 1) {
-                        grid[y + dy/2][x + dx/2] = 0; walk(nx, ny);
+                        grid[y + dy / 2][x + dx / 2] = 0; walk(nx, ny);
                     }
                 }
             }
-            walk(1, 1); grid[1][1] = 0; grid[exit.y][exit.x] = 0;
+            walk(1, 1);
+            grid[ROWS-2][COLS-2] = 0;
         }
 
         function startTimer() {
             if(timerInterval) clearInterval(timerInterval);
             timerInterval = setInterval(() => {
                 if (isGameOver) return;
-                timeLeft--; timerEl.innerText = timeLeft;
+                timeLeft--;
                 if (timeLeft <= 0) endGame(false);
+                draw();
             }, 1000);
         }
 
-        function endGame(win) {
-            isGameOver = true; clearInterval(timerInterval);
-            modal.style.display = 'flex';
-            const title = document.getElementById('modal-title'), desc = document.getElementById('modal-desc');
-            if (win) { CandyAudio.playCollect(); title.innerText = "好棒！🍭"; desc.innerText = "成功找到了糖果礼盒！"; }
-            else { CandyAudio.playGameOver(); title.innerText = "呜呜...🍩"; desc.innerText = "能量耗尽，被困在曲奇里了"; }
+        function getTouchPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const t = e.touches ? e.touches[0] : e;
+            return { x: (t.clientX - rect.left) * scaleX, y: (t.clientY - rect.top) * scaleY };
         }
 
-        function restartGame() { CandyAudio.playClick(); initGame(); }
-
-        // --- 3. 摇杆控制 ---
-        const stick = document.getElementById('joy-stick'), base = document.getElementById('joy-base');
-        let drag = false;
-        const handleInput = (ex, ey) => {
-            CandyAudio.init();
-            const rect = base.getBoundingClientRect();
-            let dx = ex - (rect.left + rect.width / 2), dy = ey - (rect.top + rect.height / 2);
-            const d = Math.sqrt(dx * dx + dy * dy), m = 50;
-            if (d > m) { dx *= m / d; dy *= m / d; }
-            stick.style.transform = `translate(${dx}px, ${dy}px)`;
-            joyX = dx / m; joyY = dy / m;
-        };
-        base.addEventListener('pointerdown', (e) => { drag = true; handleInput(e.clientX, e.clientY); });
-        window.addEventListener('pointermove', (e) => { if (drag) handleInput(e.clientX, e.clientY); });
-        window.addEventListener('pointerup', () => { drag = false; stick.style.transform = 'translate(0,0)'; joyX = 0; joyY = 0; });
-
-        // --- 4. 核心循环 ---
-        function loop(t) {
+        canvas.addEventListener('pointerdown', (e) => {
+            e.preventDefault(); CandyAudio.init();
             if (isGameOver) return;
-            requestAnimationFrame(loop);
-            ctx.fillStyle = "#EBE7E4"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const pos = getTouchPos(e);
+            for (let k in uiBtns) {
+                let btn = uiBtns[k];
+                if (pos.x > btn.x && pos.x < btn.x + btn.w && pos.y > btn.y && pos.y < btn.y + btn.h) {
+                    btn.active = true;
+                    activeMoveDir = btn.move;
+                    CandyAudio.play('click');
+                }
+            }
+        });
 
-            // 画墙壁 (莫兰迪灰棕)
+        const stopMove = () => { for (let k in uiBtns) uiBtns[k].active = false; activeMoveDir = null; };
+        window.addEventListener('pointerup', stopMove);
+        window.addEventListener('pointercancel', stopMove);
+
+        function loop(timestamp) {
+            if (isGameOver) return;
+            if (activeMoveDir) {
+                if (timestamp - lastMoveTimestamp > MOVE_INTERVAL) {
+                    let nx = player.x + activeMoveDir.x, ny = player.y + activeMoveDir.y;
+                    if (grid[ny] && grid[ny][nx] === 0) {
+                        player.x = nx; player.y = ny;
+                        if (player.x === exit.x && player.y === exit.y) endGame(true);
+                    }
+                    lastMoveTimestamp = timestamp;
+                }
+            }
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. 顶部 HUD
+            ctx.fillStyle = "rgba(255,255,255,0.9)";
+            drawRoundedRect(ctx, 110, 20, 180, 40, 20);
+            ctx.fillStyle = timeLeft < 10 ? "#FF85A1" : "#9BB7AD";
+            ctx.font = "bold 18px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(`ENERGY: ${timeLeft}s`, 200, 40);
+
+            // 2. 迷宫绘制区 (紧凑填充)
+            ctx.fillStyle = "rgba(255,255,255,0.4)";
+            drawRoundedRect(ctx, GAME_X_OFFSET-4, GAME_Y_OFFSET-4, (COLS*CELL)+8, (ROWS*CELL)+8, 12);
+            
             ctx.fillStyle = "#A89A90";
             for (let y = 0; y < ROWS; y++) {
                 for (let x = 0; x < COLS; x++) {
-                    if (grid[y][x] === 1) drawRoundedRect(ctx, x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2, 5);
+                    if (grid[y][x] === 1) drawRoundedRect(ctx, GAME_X_OFFSET + x * CELL + 1, GAME_Y_OFFSET + y * CELL + 1, CELL - 2, CELL - 2, 3);
                 }
             }
-            // 画出口
-            ctx.font = "18px Arial"; ctx.fillText("🎁", exit.x * CELL + 1, exit.y * CELL + 17);
 
-            // 移动判定
-            if (t - lastMove > 120) {
-                let nx = player.x, ny = player.y;
-                if (Math.abs(joyX) > 0.4) nx += (joyX > 0 ? 1 : -1);
-                else if (Math.abs(joyY) > 0.4) ny += (joyY > 0 ? 1 : -1);
-                if (grid[ny] && grid[ny][nx] === 0) { player.x = nx; player.y = ny; lastMove = t; }
+            // 3. 出口
+            ctx.font = "12px Arial";
+            ctx.fillText("🎁", GAME_X_OFFSET + exit.x * CELL + 6, GAME_Y_OFFSET + exit.y * CELL + 6);
+
+            // 4. 玩家珍珠
+            ctx.fillStyle = "#D99FA9";
+            ctx.beginPath();
+            ctx.arc(GAME_X_OFFSET + player.x * CELL + 6, GAME_Y_OFFSET + player.y * CELL + 6, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "white"; ctx.lineWidth = 1; ctx.stroke();
+
+            // 5. 底部一排式按钮
+            ctx.textBaseline = "alphabetic";
+            for (let k in uiBtns) {
+                let btn = uiBtns[k];
+                ctx.save();
+                ctx.fillStyle = btn.active ? "rgba(217, 159, 169, 0.9)" : "rgba(255,255,255,0.7)";
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 4;
+                drawRoundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 18);
+                ctx.stroke();
+                ctx.fillStyle = btn.active ? "white" : btn.color;
+                ctx.font = "bold 32px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText(btn.icon, btn.x + btn.w/2, btn.y + btn.h/2 + 12);
+                ctx.restore();
             }
-            // 画玩家
-            ctx.fillStyle = "#D99FA9"; ctx.beginPath(); ctx.arc(player.x * CELL + CELL/2, player.y * CELL + CELL/2, 8, 0, Math.PI*2); ctx.fill();
-            ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
-            if (player.x === exit.x && player.y === exit.y) endGame(true);
         }
+
+        function endGame(win) {
+            isGameOver = true;
+            clearInterval(timerInterval);
+            const title = document.getElementById('modal-title'), desc = document.getElementById('modal-desc');
+            if (win) { CandyAudio.play('ding'); title.innerText = "挑战成功！🍭"; desc.innerText = `你是迷宫大师！剩余能量: ${timeLeft}s`; }
+            else { CandyAudio.play('sad'); title.innerText = "可惜！🍩"; desc.innerText = "离出口只差一点点..."; }
+            modal.style.display = 'flex';
+        }
+
+        function handleReset() { CandyAudio.play('click'); init(); }
 
         function drawRoundedRect(ctx, x, y, w, h, r) {
-            ctx.beginPath(); ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r); ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h); ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r); ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y); ctx.closePath(); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath(); ctx.fill();
         }
 
-        initGame();
+        init();
     </script>
 </body>
 </html>

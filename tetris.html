@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>JELLY_TETRIS // 莫兰迪一体化版</title>
+    <title>JELLY_TETRIS // 莫兰迪一体化修复版</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* --- 1. 极简布局：只负责居中画布 --- */
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
             display: flex; align-items: center; justify-content: center;
             background-color: var(--bg-main); overflow: hidden;
-            touch-action: manipulation; /* 允许缩放，但优化点击 */
+            touch-action: manipulation;
         }
 
         #game-container {
@@ -25,22 +24,18 @@
             border: 6px solid white;
             border-radius: 40px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
-            /* 关键：根据屏幕高度自适应，同时保持比例 */
             max-width: 95vw;
             max-height: 92vh;
             width: auto; height: auto;
             display: block;
         }
 
-        /* 屏蔽外部旧组件 */
         #hud, .controls, .button-panel { display: none !important; }
-
         .back-home { position: absolute; top: 20px; left: 20px; z-index: 1000; font-weight: bold; }
 
-        /* 结算弹窗：依然建议使用HTML，因为文字渲染更清晰 */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(107, 94, 94, 0.2);
+            background: rgba(107, 94, 94, 0.3);
             display: none; align-items: center; justify-content: center;
             z-index: 2000; backdrop-filter: blur(10px);
         }
@@ -55,7 +50,7 @@
     <a href="index.html" class="back-home" id="back-link">🏠 返回</a>
 
     <div id="game-container">
-        <!-- 画布比例：400x800 (100积分区 + 600游戏区 + 100按钮区) -->
+        <!-- 画布固定比例 400x800 -->
         <canvas id="gameCanvas" width="400" height="800"></canvas>
     </div>
 
@@ -68,7 +63,6 @@
     </div>
 
     <script>
-        // --- 1. 糖果音效引擎 ---
         const CandyAudio = {
             ctx: null,
             init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (this.ctx.state === 'suspended') this.ctx.resume(); },
@@ -82,21 +76,27 @@
             }
         };
 
-        // --- 2. 核心逻辑与UI定义 ---
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const modal = document.getElementById('over-modal');
 
-        const COLS = 10, ROWS = 20, BLOCK = 32; // 略微调大方块
-        const GRID_Y_OFFSET = 100; // 游戏区域从 y=100 开始绘制
+        /**
+         * --- 核心坐标修正 ---
+         * 顶部HUD: 0 - 90px
+         * 游戏区域: 95px - 695px (ROWS=20 * BLOCK=30)
+         * 间隙: 695 - 710px
+         * 底部按钮: 710 - 800px
+         */
+        const COLS = 10, ROWS = 20, BLOCK = 30; 
+        const GRID_X_START = 50; // (400 - 10*30) / 2 = 50 居中对齐
+        const GRID_Y_START = 95; 
         
         let board, score, isGameOver, lastTick, tickSpeed, curr;
 
-        // UI 按钮定义 (基于 400x800)
         const uiBtns = {
-            L: { x: 30,  y: 710, w: 75, h: 70, icon: '←', active: false, color: '#9BB7AD' },
-            R: { x: 120, y: 710, w: 75, h: 70, icon: '→', active: false, color: '#9BB7AD' },
-            Rot: { x: 210, y: 710, w: 75, h: 70, icon: '↻', active: false, color: '#D99FA9' },
-            Drop: { x: 300, y: 710, w: 75, h: 70, icon: '↓', active: false, color: '#9BB7AD' }
+            L: { x: 35,  y: 710, w: 70, h: 70, icon: '←', active: false, color: '#9BB7AD' },
+            R: { x: 125, y: 710, w: 70, h: 70, icon: '→', active: false, color: '#9BB7AD' },
+            Rot: { x: 215, y: 710, w: 70, h: 70, icon: '↻', active: false, color: '#D99FA9' },
+            Drop: { x: 305, y: 710, w: 70, h: 70, icon: '↓', active: false, color: '#9BB7AD' }
         };
 
         const COLORS = [null, '#D99FA9', '#A1B5D0', '#9BB7AD', '#E6D5B8', '#B4A7AF', '#C9A7AC', '#ADB8A6'];
@@ -109,7 +109,6 @@
             newPiece(); requestAnimationFrame(loop);
         }
 
-        // --- 3. 交互逻辑 (坐标映射) ---
         function getTouchPos(e) {
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
@@ -122,12 +121,10 @@
             e.preventDefault(); CandyAudio.init();
             if (isGameOver) return;
             const pos = getTouchPos(e);
-            
             for (let k in uiBtns) {
                 let btn = uiBtns[k];
                 if (pos.x > btn.x && pos.x < btn.x + btn.w && pos.y > btn.y && pos.y < btn.y + btn.h) {
-                    btn.active = true;
-                    CandyAudio.play('click');
+                    btn.active = true; CandyAudio.play('click');
                     if (k === 'L' && !collide(-1, 0)) curr.x--;
                     if (k === 'R' && !collide(1, 0)) curr.x++;
                     if (k === 'Rot') rotate();
@@ -137,12 +134,8 @@
             }
         });
 
-        window.addEventListener('pointerup', () => {
-            for (let k in uiBtns) uiBtns[k].active = false;
-            draw();
-        });
+        window.addEventListener('pointerup', () => { for (let k in uiBtns) uiBtns[k].active = false; draw(); });
 
-        // --- 4. 游戏动作 ---
         function newPiece() {
             const id = Math.floor(Math.random() * (SHAPES.length - 1)) + 1;
             curr = { s: SHAPES[id], color: id, x: 4, y: 0 };
@@ -173,41 +166,44 @@
             if (lines > 0) { score += lines * 100; CandyAudio.play('ding'); if (tickSpeed > 150) tickSpeed -= 20; }
         }
 
-        // --- 5. 绘图系统 ---
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 1. 绘制顶部 HUD
+            // 1. 顶部 HUD
             ctx.fillStyle = "rgba(255,255,255,0.9)";
-            drawRoundedRect(ctx, 110, 25, 180, 45, 22.5); // 积分底座
+            drawRoundedRect(ctx, 110, 25, 180, 45, 22.5);
             ctx.fillStyle = "#D99FA9";
             ctx.font = "bold 20px Quicksand, Arial";
             ctx.textAlign = "center";
             ctx.fillText(`SCORE: ${score}`, 200, 56);
 
-            // 2. 绘制游戏区域背景
-            ctx.fillStyle = "rgba(255,255,255,0.3)";
-            drawRoundedRect(ctx, 40, GRID_Y_OFFSET, 320, 580, 20); // 网格背景
+            // 2. 绘制网格背景容器
+            ctx.fillStyle = "rgba(255,255,255,0.4)";
+            drawRoundedRect(ctx, GRID_X_START - 5, GRID_Y_START - 5, (COLS * BLOCK) + 10, (ROWS * BLOCK) + 10, 15);
             
-            // 辅助网格
-            ctx.strokeStyle = "rgba(107, 94, 94, 0.04)";
+            // 辅助网格线
+            ctx.strokeStyle = "rgba(107, 94, 94, 0.05)";
             ctx.lineWidth = 1;
-            for(let i=0; i<=COLS; i++) { ctx.beginPath(); ctx.moveTo(40+i*BLOCK, GRID_Y_OFFSET); ctx.lineTo(40+i*BLOCK, GRID_Y_OFFSET+640); ctx.stroke(); }
+            for(let i=0; i<=COLS; i++) { 
+                ctx.beginPath(); 
+                ctx.moveTo(GRID_X_START + i*BLOCK, GRID_Y_START); 
+                ctx.lineTo(GRID_X_START + i*BLOCK, GRID_Y_START + ROWS*BLOCK); 
+                ctx.stroke(); 
+            }
 
             // 3. 绘制方块
             board.forEach((row, y) => row.forEach((v, x) => { if (v) drawJellyBlock(x, y, COLORS[v]); }));
             if (curr.s) curr.s.forEach((row, y) => row.forEach((v, x) => { if (v) drawJellyBlock(curr.x+x, curr.y+y, COLORS[curr.color]); }));
 
-            // 4. 绘制底部按钮
+            // 4. 绘制底部按钮 (y=710, 确保不与游戏区重叠)
             for (let k in uiBtns) {
                 let btn = uiBtns[k];
                 ctx.save();
-                ctx.fillStyle = btn.active ? btn.color : "rgba(255,255,255,0.6)";
+                ctx.fillStyle = btn.active ? btn.color : "rgba(255,255,255,0.7)";
                 ctx.strokeStyle = "white";
                 ctx.lineWidth = 4;
-                drawRoundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 18);
+                drawRoundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 20);
                 ctx.stroke();
-
                 ctx.fillStyle = btn.active ? "white" : btn.color;
                 ctx.font = "bold 32px Arial";
                 ctx.textAlign = "center";
@@ -217,11 +213,11 @@
         }
 
         function drawJellyBlock(x, y, color) {
-            const px = 40 + x * BLOCK, py = GRID_Y_OFFSET + y * BLOCK;
+            const px = GRID_X_START + x * BLOCK, py = GRID_Y_START + y * BLOCK;
             ctx.fillStyle = color;
             drawRoundedRect(ctx, px+2, py+2, BLOCK-4, BLOCK-4, 8);
-            ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
-            ctx.beginPath(); ctx.ellipse(px+10, py+10, 5, 3, Math.PI/4, 0, 7); ctx.fill();
+            ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+            ctx.beginPath(); ctx.ellipse(px+8, py+8, 4, 2, Math.PI/4, 0, 7); ctx.fill();
         }
 
         function drawRoundedRect(ctx, x, y, w, h, r) {

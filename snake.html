@@ -2,79 +2,47 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CANDY_WORM // 吃桃小蛇</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>SWEET_SNAKE // 极致空间版</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* --- 竖屏布局核心修正 --- */
-        body {
-            margin: 0; padding: 0;
-            width: 100%; height: 100vh;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center; /* 全屏垂直水平双重居中 */
-            background-color: var(--bg-main);
-            overflow: hidden;
-            touch-action: none; /* 禁止系统手势 */
+        /* --- 1. 极致居中布局 --- */
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            background-color: var(--bg-main); overflow: hidden;
+            touch-action: manipulation;
         }
 
-        /* 顶部状态栏：设为绝对定位，不占用中心对齐空间 */
-        #hud {
-            position: absolute; top: 20px; width: 100%;
-            display: flex; justify-content: center;
-            pointer-events: none; z-index: 100;
-        }
-        .score-box {
-            background: white; padding: 8px 25px;
-            border-radius: 20px; border: 2px solid var(--candy-pink);
-            color: var(--candy-pink); font-size: 1rem; font-weight: bold;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        #game-container {
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+            width: 100%; height: 100%;
         }
 
-        .back-home { position: absolute; top: 20px; left: 20px; z-index: 110; }
-
-        /* --- 游戏组件：将画布和摇杆捆绑在一起居中 --- */
-        .game-capsule {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            gap: -30px; /* 画布与摇杆的间距 */
-        }
-
-        #canvas-wrap {
-            height: auto !important;
-            display: flex !important;
-            justify-content: center;
-        }
-
-        canvas { 
-            background: #EBE7E4; /* 莫兰迪底色 */
+        canvas {
+            background: #EBE7E4;
             border: 6px solid white;
-            border-radius: 35px;
-            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.05);
-            /* 竖屏优化比例：宽度占屏幕 80% 左右，高度自适应 */
-            max-height: 50vh; 
-            max-width: 80vw;
+            border-radius: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            max-width: 95vw;
+            max-height: 92vh;
             width: auto; height: auto;
             display: block;
         }
 
-        /* 控制器面板：紧贴画布下方 */
-        .controls {
-            position: static !important; /* 覆盖全屏定位，跟随文档流 */
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            pointer-events: auto;
-        }
+        #hud, .controls { display: none !important; }
+        .back-home { position: absolute; top: 20px; left: 20px; z-index: 1000; font-weight: bold; }
 
-        /* 结算弹窗完美居中 */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(107, 94, 94, 0.2);
             display: none; align-items: center; justify-content: center;
-            z-index: 1000; backdrop-filter: blur(8px);
+            z-index: 2000; backdrop-filter: blur(10px);
+        }
+        .modal-content {
+            background: white; width: 80%; max-width: 300px; padding: 30px;
+            border-radius: 40px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.1);
         }
     </style>
 </head>
@@ -82,128 +50,200 @@
     <div class="candy-bg"></div>
     <a href="index.html" class="back-home" id="back-link">🏠 返回</a>
 
-    <div id="hud">
-        <div class="score-box">🍑 吃桃分数: <span id="cur-score">0</span></div>
-    </div>
-
-    <!-- 游戏核心包：受 body 居中控制 -->
-    <div class="game-capsule">
-        <div id="canvas-wrap">
-            <!-- 纵向比例画布：20x25 个格子 -->
-            <canvas id="gameCanvas" width="400" height="500"></canvas>
-        </div>
-
-        <div class="controls">
-            <div class="ctrl-panel">
-                <div id="joy-base" class="joy-base">
-                    <div id="joy-stick" class="joy-stick"></div>
-                </div>
-            </div>
-        </div>
+    <div id="game-container">
+        <!-- 400x800 一体化比例 -->
+        <canvas id="gameCanvas" width="400" height="800"></canvas>
     </div>
 
     <div id="over-modal" class="modal-overlay">
         <div class="modal-content">
-            <h2 style="color: var(--candy-pink); font-size: 1.6rem; margin: 0 0 10px;">哎呀！撞翻啦 🍑</h2>
-            <p style="font-size: 0.95rem; color: #998888; margin-bottom: 25px;">收集了 <span id="final-score" style="color:var(--candy-pink); font-weight:bold;">0</span> 颗甜桃</p>
-            <div class="cute-btn wide" onclick="handleReset()">再来一颗桃！</div>
+            <h2 style="color: var(--candy-pink); margin-bottom: 5px; font-size: 1.5rem;">哎呀！撞翻啦 🍓</h2>
+            <p style="color: #998888; font-size: 0.9rem; margin-bottom: 25px;">你收集了 <span id="final-score" style="color:var(--candy-pink); font-weight:bold;">0</span> 个甜点</p>
+            <button class="cute-btn wide" onclick="handleReset()" style="width: 100%; height: 50px; border-radius: 25px; font-size: 1rem;">再来一颗桃！</button>
         </div>
     </div>
 
     <script>
+        // --- 1. 糖果音效引擎 ---
         const CandyAudio = {
             ctx: null,
             init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (this.ctx.state === 'suspended') this.ctx.resume(); },
-            playClick() { this.init(); const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(800, this.ctx.currentTime); o.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1); g.gain.setValueAtTime(0.2, this.ctx.currentTime); o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(this.ctx.currentTime + 0.1); },
-            playCollect() { this.init(); const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(400, this.ctx.currentTime); o.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.2); g.gain.setValueAtTime(0.15, this.ctx.currentTime); o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(this.ctx.currentTime + 0.2); },
-            playGameOver() { this.init(); const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.type = 'square'; o.frequency.setValueAtTime(300, this.ctx.currentTime); o.frequency.linearRampToValueAtTime(50, this.ctx.currentTime + 0.5); g.gain.setValueAtTime(0.1, this.ctx.currentTime); o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(this.ctx.currentTime + 0.5); }
+            play(type) {
+                this.init(); const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.connect(g); g.connect(this.ctx.destination);
+                const n = this.ctx.currentTime;
+                if(type==='click'){ o.frequency.setValueAtTime(800,n); o.frequency.exponentialRampToValueAtTime(100,n+0.1); g.gain.setValueAtTime(0.15,n); }
+                if(type==='ding'){ o.type='triangle'; o.frequency.setValueAtTime(500,n); o.frequency.exponentialRampToValueAtTime(1500,n+0.2); g.gain.setValueAtTime(0.1,n); }
+                if(type==='sad'){ o.type='square'; o.frequency.setValueAtTime(200,n); o.frequency.linearRampToValueAtTime(50,n+0.5); g.gain.setValueAtTime(0.08,n); }
+                o.start(); o.stop(n + 0.5);
+            }
         };
 
+        // --- 2. 核心逻辑与UI定义 ---
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
-        const scoreEl = document.getElementById('cur-score'), modal = document.getElementById('over-modal'), finalEl = document.getElementById('final-score');
+        const modal = document.getElementById('over-modal');
 
-        // --- 竖屏网格配置 ---
-        const GRID_SIZE = 20;
-        const COLS = 20; // 400 / 20
-        const ROWS = 25; // 500 / 20
+        /**
+         * 空间分配 (Total 800px):
+         * 0-80px: 顶部HUD
+         * 80-700px: 蛇移动区域 (高 620px / 20px每格 = 31行)
+         * 710-790px: 底部控制按钮 (紧贴移动区)
+         */
+        const GRID_SIZE = 20, COLS = 20, ROWS = 31; 
+        const GAME_Y_OFFSET = 80;
 
-        let snake, dir, food, score, isGameOver, lastTick = 0, joyX = 0, joyY = 0;
+        let snake, dir, food, score, isGameOver, lastTick = 0;
+        const SWEETS = ['🍑', '🍓', '🍬', '🍭', '🍦', '🍩', '🧁'];
+
+        // 按顺序排列：左(←)、右(→)、上(↑)、下(↓)
+        const uiBtns = {
+            L: { x: 25,  y: 710, w: 80, h: 70, icon: '←', key: {x: -1, y: 0}, color: '#9BB7AD' },
+            R: { x: 115, y: 710, w: 80, h: 70, icon: '→', key: {x: 1, y: 0}, color: '#9BB7AD' },
+            U: { x: 205, y: 710, w: 80, h: 70, icon: '↑', key: {x: 0, y: -1}, color: '#D99FA9' },
+            D: { x: 295, y: 710, w: 80, h: 70, icon: '↓', key: {x: 0, y: 1}, color: '#D99FA9' }
+        };
 
         function init() {
-            snake = [{x: 10, y: 12}, {x: 10, y: 13}, {x: 10, y: 14}];
-            dir = {x: 0, y: -1}; // 初始向上
-            score = 0; isGameOver = false;
-            scoreEl.innerText = score;
+            snake = [{x: 10, y: 15}, {x: 10, y: 16}, {x: 10, y: 17}];
+            dir = {x: 0, y: -1}; score = 0; isGameOver = false;
             modal.style.display = 'none';
             spawnFood();
             requestAnimationFrame(loop);
         }
 
         function spawnFood() {
-            food = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
+            const x = Math.floor(Math.random() * COLS);
+            const y = Math.floor(Math.random() * ROWS);
+            food = { x, y, type: SWEETS[Math.floor(Math.random() * SWEETS.length)] };
             if (snake.some(s => s.x === food.x && s.y === food.y)) spawnFood();
         }
 
-        const stick = document.getElementById('joy-stick'), base = document.getElementById('joy-base');
-        let drag = false;
-        const handleMove = (ex, ey) => {
-            CandyAudio.init(); 
-            const r = base.getBoundingClientRect(), cx = r.left + r.width/2, cy = r.top + r.height/2;
-            let dx = ex - cx, dy = ey - cy;
-            const d = Math.sqrt(dx*dx + dy*dy), m = 50;
-            if(d > m) { dx *= m/d; dy *= m/d; }
-            stick.style.transform = `translate(${dx}px, ${dy}px)`;
-            joyX = dx/m; joyY = dy/m;
-        };
+        function getTouchPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const t = e.touches ? e.touches[0] : e;
+            return { x: (t.clientX - rect.left) * scaleX, y: (t.clientY - rect.top) * scaleY };
+        }
 
-        base.addEventListener('pointerdown', (e) => { drag = true; handleMove(e.clientX, e.clientY); });
-        window.addEventListener('pointermove', e => { if(drag) handleMove(e.clientX, e.clientY); });
-        window.addEventListener('pointerup', () => { drag = false; stick.style.transform = 'translate(0,0)'; joyX = 0; joyY = 0; });
+        canvas.addEventListener('pointerdown', (e) => {
+            e.preventDefault(); CandyAudio.init();
+            if (isGameOver) return;
+            const pos = getTouchPos(e);
+            for (let k in uiBtns) {
+                let btn = uiBtns[k];
+                if (pos.x > btn.x && pos.x < btn.x + btn.w && pos.y > btn.y && pos.y < btn.y + btn.h) {
+                    btn.active = true;
+                    if (!(btn.key.x === -dir.x && btn.key.y === -dir.y)) {
+                        dir = btn.key;
+                        CandyAudio.play('click');
+                    }
+                    draw();
+                }
+            }
+        });
+
+        window.addEventListener('pointerup', () => { for (let k in uiBtns) uiBtns[k].active = false; draw(); });
 
         function loop(t) {
             if (isGameOver) return;
             requestAnimationFrame(loop);
-
             if (t - lastTick < 160) return;
             lastTick = t;
-
-            if (Math.abs(joyX) > 0.5 && dir.x === 0) dir = { x: joyX > 0 ? 1 : -1, y: 0 };
-            else if (Math.abs(joyY) > 0.5 && dir.y === 0) dir = { x: 0, y: joyY > 0 ? 1 : -1 };
 
             const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
 
             if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS || snake.some(s => s.x === head.x && s.y === head.y)) {
-                isGameOver = true;
-                CandyAudio.playGameOver(); 
-                finalEl.innerText = score;
+                isGameOver = true; CandyAudio.play('sad');
+                document.getElementById('final-score').innerText = score;
                 modal.style.display = 'flex';
                 return;
             }
 
             snake.unshift(head);
             if (head.x === food.x && head.y === food.y) {
-                score++; scoreEl.innerText = score; 
-                CandyAudio.playCollect(); 
-                spawnFood();
+                score++; CandyAudio.play('ding'); spawnFood();
             } else {
                 snake.pop();
             }
+            draw();
+        }
 
-            ctx.fillStyle = '#EBE7E4'; 
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+            // 1. 顶部 HUD
+            ctx.fillStyle = "rgba(255,255,255,0.9)";
+            drawRoundedRect(ctx, 110, 20, 180, 45, 22.5);
+            ctx.fillStyle = "#D99FA9";
+            ctx.font = "bold 18px Quicksand, Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(`SWEETS: ${score}`, 200, 43);
+
+            // 2. 游戏区域
+            ctx.fillStyle = "rgba(255,255,255,0.4)";
+            drawRoundedRect(ctx, 0, GAME_Y_OFFSET, 400, ROWS * GRID_SIZE, 0);
+            
+            // 莫兰迪网格线
+            ctx.strokeStyle = "rgba(107, 94, 94, 0.04)";
+            ctx.lineWidth = 1;
+            for(let i=0; i<=COLS; i++) { 
+                ctx.beginPath(); ctx.moveTo(i*GRID_SIZE, GAME_Y_OFFSET); ctx.lineTo(i*GRID_SIZE, GAME_Y_OFFSET + (ROWS * GRID_SIZE)); ctx.stroke(); 
+            }
+
+            // 3. 绘制蛇身
             snake.forEach((s, i) => {
                 ctx.fillStyle = i === 0 ? '#D99FA9' : (i % 2 === 0 ? '#A1B5D0' : '#9BB7AD');
-                ctx.beginPath(); ctx.arc(s.x * GRID_SIZE + 10, s.y * GRID_SIZE + 10, 8.5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); 
+                ctx.arc(s.x * GRID_SIZE + 10, s.y * GRID_SIZE + GAME_Y_OFFSET + 10, 8.5, 0, Math.PI * 2); 
+                ctx.fill();
                 ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 1.5; ctx.stroke();
             });
-            ctx.font = "20px Arial"; ctx.fillText("🍑", food.x * GRID_SIZE + 1, food.y * GRID_SIZE + 17);
+
+            // 4. 绘制完美对齐的食物
+            ctx.font = "16px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(food.type, food.x * GRID_SIZE + GRID_SIZE/2, food.y * GRID_SIZE + GAME_Y_OFFSET + GRID_SIZE/2);
+
+           // 5. 底部按钮 (现在会正确读取你修改的 color 参数)
+            ctx.textBaseline = "alphabetic";
+            for (let k in uiBtns) {
+                let btn = uiBtns[k];
+                ctx.save();
+                
+                // --- 修复点：根据按钮是否被按下来决定背景色 ---
+                if (btn.active) {
+                    // 当按钮被按下时，使用你定义的 color (例如 #D99FA9) 的实色
+                    ctx.fillStyle = btn.color; 
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = btn.color;
+                } else {
+                    // 平时状态：使用纯白半透明，保持清新感
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.7)"; 
+                }
+
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 4;
+                drawRoundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 20);
+                ctx.stroke();
+
+                // --- 修复点：根据按钮是否被按下来决定图标颜色 ---
+                // 如果按钮是 active，文字变白色；否则，文字使用你定义的 btn.color
+                ctx.fillStyle = btn.active ? "white" : btn.color;
+                
+                ctx.font = "bold 32px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText(btn.icon, btn.x + btn.w/2, btn.y + btn.h/2 + 12);
+                ctx.restore();
+            }
         }
 
-        function handleReset() {
-            CandyAudio.playClick(); 
-            init();
+        function drawRoundedRect(ctx, x, y, w, h, r) {
+            ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath(); ctx.fill();
         }
+
+        function handleReset() { CandyAudio.play('click'); setTimeout(init, 100); }
 
         init();
     </script>
