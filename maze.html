@@ -162,6 +162,27 @@
             D: { x: 160, y: 745, w: 80, h: 45, img: iconAssets.down,  move: {x: 0, y: 1},  color: '#9BB7AD' }
         };
 
+          function init() {
+            grid = []; player = { x: 1, y: 1 }; exit = { x: 1, y: 1 }; 
+            timeLeft = 60; isGameOver = false; activeMoveDir = null; dogs = [];
+            messageTip = { text: "", timer: 0 };
+            
+            // 初始化高级涟漪底纹点位
+            rippleDecors = [];
+            for(let i = 0; i < 12; i++) {
+                rippleDecors.push({
+                    x: Math.random() * 400,
+                    y: GAME_Y_OFFSET + Math.random() * (ROWS * CELL),
+                    count: 2 + Math.floor(Math.random() * 2),
+                    baseRadius: 15 + Math.random() * 20
+                });
+            }
+
+            genMaze();
+            startTimer();
+            requestAnimationFrame(loop);
+        }
+
         canvas.addEventListener('pointerdown', (e) => {
             e.preventDefault(); CandyAudio.init();
             if (isGameOver) return;
@@ -207,11 +228,66 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const charX = GAME_X_OFFSET + player.x * CELL + CELL/2, charY = GAME_Y_OFFSET + player.y * CELL + CELL/2;
 
+            // A. 底色
+            ctx.fillStyle = "#EBE7E4"; ctx.fillRect(0, 0, 400, 800);
+
+            // B. 高级虚线涟漪底纹
+            ctx.save();
+            ctx.strokeStyle = "rgba(168, 154, 144, 0.15)";
+            ctx.lineWidth = 1.2;
+            rippleDecors.forEach(r => {
+                for(let j = 1; j <= r.count; j++) {
+                    ctx.beginPath();
+                    ctx.arc(r.x, r.y, r.baseRadius * j, 0, Math.PI * 2);
+                    ctx.setLineDash([5, 8]); // 虚线效果
+                    ctx.stroke();
+                }
+            });
+            ctx.restore();
+            
             // A. 背景迷宫
-            ctx.fillStyle = "#A89A90";
+           // A. 绘制巧克力墙体
             for (let y = 0; y < ROWS; y++) {
                 for (let x = 0; x < COLS; x++) {
-                    if (grid[y][x] === 1) drawRoundedRect(ctx, GAME_X_OFFSET + x * CELL + 1, GAME_Y_OFFSET + y * CELL + 1, CELL - 2, CELL - 2, 4);
+                    if (grid[y][x] === 1) {
+                        const px = GAME_X_OFFSET + x * CELL;
+                        const py = GAME_Y_OFFSET + y * CELL;
+                        
+                        // 1. 绘制底色 (莫兰迪巧克力色)
+                        ctx.fillStyle = "#8D7B6D"; 
+                        ctx.beginPath();
+                        ctx.roundRect ? ctx.roundRect(px, py, CELL, CELL, 3) : ctx.rect(px, py, CELL, CELL);
+                        ctx.fill();
+
+                        // 2. 绘制巧克力内凹块效果
+                        ctx.fillStyle = "#7A685B"; // 稍深一点
+                        ctx.fillRect(px + 3, py + 3, CELL - 6, CELL - 6);
+
+                        // 3. 绘制高光边 (3D感)
+                        ctx.strokeStyle = "rgba(255,255,255,0.15)";
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(px, py + CELL); ctx.lineTo(px, py); ctx.lineTo(px + CELL, py);
+                        ctx.stroke();
+
+                        // 4. 绘制曲奇碎屑 (随机噪点)
+                        ctx.fillStyle = "#4A3B2F"; 
+                        if((x + y) % 3 === 0) ctx.fillRect(px + CELL/2, py + CELL/4, 1.5, 1.5);
+                        if((x * y) % 5 === 0) ctx.fillRect(px + CELL/3, py + CELL/1.5, 1.2, 1.2);
+
+                        // 5. 连接条逻辑 (让巧克力排连起来)
+                        ctx.fillStyle = "#8D7B6D";
+                        if (x < COLS - 1 && grid[y][x + 1] === 1) { // 右连接
+                            ctx.fillRect(px + CELL - 3, py, 6, CELL);
+                            ctx.fillStyle = "#7A685B"; ctx.fillRect(px + CELL - 3, py + 3, 6, CELL - 6); // 连贯凹槽
+                            ctx.fillStyle = "#8D7B6D";
+                        }
+                        if (y < ROWS - 1 && grid[y + 1][x] === 1) { // 下连接
+                            ctx.fillRect(px, py + CELL - 3, CELL, 6);
+                            ctx.fillStyle = "#7A685B"; ctx.fillRect(px + 3, py + CELL - 3, CELL - 6, 6); // 连贯凹槽
+                            ctx.fillStyle = "#8D7B6D";
+                        }
+                    }
                 }
             }
             
@@ -222,12 +298,64 @@
             ctx.font = "12px Arial";
             dogs.forEach(dog => ctx.fillText("🐕", GAME_X_OFFSET + dog.x * CELL + CELL/2, GAME_Y_OFFSET + dog.y * CELL + CELL/2));
 
-            // D. 玩家
-            ctx.save(); ctx.translate(charX, charY);
-            const breathe = Math.sin(Date.now() / 200) * 0.05; ctx.scale(1 + breathe, 1 - breathe);
-            ctx.fillStyle = "#615e6c"; drawRoundedRect(ctx, -5, 0, 10, 6, 4); 
-            ctx.beginPath(); ctx.arc(0, -4, 6, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = "#A89A90"; ctx.beginPath(); ctx.arc(-2.5, -4.5, 1.2, 0, 7); ctx.arc(2.5, -4.5, 1.2, 0, 7); ctx.fill();
+            // --- D. 玩家：可爱萌兔头 ---
+            ctx.save(); 
+            ctx.translate(charX, charY);
+            
+            // Q弹呼吸动画
+            const breathe = Math.sin(Date.now() / 180) * 0.1; 
+            ctx.scale(1 + breathe, 1 - breathe);
+
+            // 1. 绘制长耳朵 (左右对称)
+            ctx.fillStyle = "#D99FA9"; // 莫兰迪粉
+            // 左耳
+            drawRoundedRect(ctx, -6, -15, 5, 11, 2.5);
+            // 右耳
+            drawRoundedRect(ctx, 1, -15, 5, 11, 2.5);
+            
+            // 2. 绘制内耳 (让耳朵更有层次感)
+            ctx.fillStyle = "#E9BFC7"; 
+            drawRoundedRect(ctx, -4.5, -13, 2, 7, 1);
+            drawRoundedRect(ctx, 2.5, -13, 2, 7, 1);
+
+            // 3. 绘制圆滚滚的大脑袋 (比原来稍大一点，显萌)
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.arc(0, -3, 8.5, 0, Math.PI * 2); 
+            ctx.fill();
+            // 头部白色细边框 (增加精致感)
+            ctx.strokeStyle = "rgba(255,255,255,0.6)";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // 4. 脸部细节
+            // 黑豆眼
+            ctx.fillStyle = "#4A3B2F"; 
+            ctx.beginPath();
+            ctx.arc(-3.5, -4, 1.8, 0, Math.PI * 2); // 左眼
+            ctx.arc(3.5, -4, 1.8, 0, Math.PI * 2);  // 右眼
+            ctx.fill();
+
+            // 眼睛里的白色高光 (画龙点睛)
+            ctx.fillStyle = "white";
+            ctx.beginPath();
+            ctx.arc(-4, -4.5, 0.6, 0, Math.PI * 2);
+            ctx.arc(3, -4.5, 0.6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 嘟嘟粉腮红
+            ctx.fillStyle = "rgba(255, 133, 161, 0.4)";
+            ctx.beginPath();
+            ctx.arc(-5.5, -0.5, 2.5, 0, Math.PI * 2); 
+            ctx.arc(5.5, -0.5, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 小红鼻子
+            ctx.fillStyle = "#FF85A1";
+            ctx.beginPath();
+            ctx.arc(0, -1.5, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+
             ctx.restore();
 
             // E. 烟雾迷雾
@@ -293,7 +421,7 @@
         function handleReset() { CandyAudio.play('click'); init(); }
         function drawRoundedRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath(); ctx.fill(); }
 
-        init();
+        init() ;
     </script>
 </body>
 </html>
