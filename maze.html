@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>SWEET_MAZE // 随机逃离版</title>
+    <title>SWEET_MAZE // 迷雾挑战版</title>
     <link rel="stylesheet" href="style.css">
     <style>
         body, html {
@@ -27,7 +27,7 @@
             width: auto; height: auto;
             display: block;
         }
-        #hud, .controls { display: none !important; }
+        #hud, .controls, .button-panel { display: none !important; }
         .back-home { position: absolute; top: 20px; left: 20px; z-index: 1000; font-weight: bold; }
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -58,7 +58,6 @@
     </div>
 
     <script>
-        // --- 1. 糖果音效引擎 ---
         const CandyAudio = {
             ctx: null,
             init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (this.ctx.state === 'suspended') this.ctx.resume(); },
@@ -73,13 +72,10 @@
             }
         };
 
-        const iconAssets = {
-            left: new Image(), right: new Image(), up: new Image(), down: new Image()
-        };
+        const iconAssets = { left: new Image(), right: new Image(), up: new Image(), down: new Image() };
         iconAssets.left.src = 'icons/left.svg'; iconAssets.right.src = 'icons/right.svg';
         iconAssets.up.src = 'icons/up.svg'; iconAssets.down.src = 'icons/down.svg';
 
-        // --- 2. 配置 ---
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const modal = document.getElementById('over-modal');
 
@@ -89,7 +85,7 @@
 
         let grid, player, exit, timeLeft, isGameOver, timerInterval, dogs, rippleDecors;
         let activeMoveDir = null, lastMoveTimestamp = 0, messageTip = { text: "", timer: 0 };
-        let animationId = null; // 用于管理动画清理
+        let animationId = null;
         const MOVE_INTERVAL = 95;
 
         const uiBtns = {
@@ -99,9 +95,7 @@
             D: { x: 160, y: 745, w: 80, h: 45, img: iconAssets.down,  move: {x: 0, y: 1},  color: '#9BB7AD' }
         };
 
-        // 核心修复：合并为一个统一的 init 函数
         function init() {
-            // 清理旧状态
             if (animationId) cancelAnimationFrame(animationId);
             if (timerInterval) clearInterval(timerInterval);
 
@@ -110,14 +104,11 @@
             messageTip = { text: "", timer: 0 };
             modal.style.display = 'none';
             
-            // 初始化涟漪
             rippleDecors = [];
             for(let i = 0; i < 12; i++) {
                 rippleDecors.push({
-                    x: Math.random() * 400,
-                    y: GAME_Y_OFFSET + Math.random() * (ROWS * CELL),
-                    count: 2 + Math.floor(Math.random() * 2),
-                    baseRadius: 15 + Math.random() * 20
+                    x: Math.random() * 400, y: GAME_Y_OFFSET + Math.random() * (ROWS * CELL),
+                    count: 2 + Math.floor(Math.random() * 2), baseRadius: 15 + Math.random() * 20
                 });
             }
 
@@ -128,8 +119,9 @@
 
         function genMaze() {
             grid = Array(ROWS).fill().map(() => Array(COLS).fill(1));
-            function walk(x, y) {
+            const walk = (x, y) => {
                 grid[y][x] = 0;
+                // 难度提升：随机方向选择更不均衡，产生更多长死路
                 const d = [[0, -2], [0, 2], [-2, 0], [2, 0]].sort(() => Math.random() - 0.5);
                 for (let [dx, dy] of d) {
                     let nx = x + dx, ny = y + dy;
@@ -137,33 +129,38 @@
                         grid[y + dy / 2][x + dx / 2] = 0; walk(nx, ny);
                     }
                 }
-            }
+            };
             walk(1, 1);
 
+            // --- 核心：增加迷宫迷惑性逻辑 ---
+            // 1. 随机移除15-20堵墙，制造回路(Loop)，让玩家在里面转圈
+            for(let i=0; i<20; i++){
+                let rx = 1 + Math.floor(Math.random()*(COLS-2));
+                let ry = 1 + Math.floor(Math.random()*(ROWS-2));
+                if(grid[ry][rx] === 1) grid[ry][rx] = 0;
+            }
+
+            // 2. 寻找真正的出口
             let potentialExits = [];
             for (let y = 1; y < ROWS - 1; y++) {
                 for (let x = 1; x < COLS - 1; x++) {
                     if (grid[y][x] === 0) {
                         let dist = Math.abs(x - 1) + Math.abs(y - 1);
-                        if (dist > (COLS + ROWS) / 1.5) potentialExits.push({x, y});
+                        if (dist > (COLS + ROWS) / 1.4) potentialExits.push({x, y});
                     }
                 }
             }
-            exit = potentialExits.length > 0 ? potentialExits[Math.floor(Math.random() * potentialExits.length)] : { x: COLS - 2, y: ROWS - 2 };
+            exit = potentialExits.length > 0 ? potentialExits[Math.floor(Math.random() * potentialExits.length)] : { x: COLS-2, y: ROWS-2 };
 
-            for(let i=0; i<12; i++) {
+            // 3. 在死胡同或交叉口放更多的狗
+            for(let i=0; i<15; i++) {
                 let rx = Math.floor(Math.random()*COLS), ry = Math.floor(Math.random()*ROWS);
-                if(grid[ry][rx] === 0 && (Math.abs(rx-player.x) > 3) && (rx!==exit.x||ry!==exit.y)) dogs.push({x: rx, y: ry});
+                if(grid[ry][rx] === 0 && Math.abs(rx-player.x)>3 && (rx!==exit.x||ry!==exit.y)) dogs.push({x: rx, y: ry});
             }
         }
 
         function startTimer() {
-            timerInterval = setInterval(() => { 
-                if (!isGameOver) { 
-                    timeLeft--; 
-                    if (timeLeft <= 0) endGame(false); 
-                } 
-            }, 1000);
+            timerInterval = setInterval(() => { if (!isGameOver) { timeLeft--; if (timeLeft <= 0) endGame(false); } }, 1000);
         }
 
         function getTouchPos(e) {
@@ -189,7 +186,6 @@
         function loop(t) {
             if (isGameOver) return;
             animationId = requestAnimationFrame(loop);
-
             if (activeMoveDir && t - lastMoveTimestamp > MOVE_INTERVAL) {
                 let nx = player.x + activeMoveDir.x, ny = player.y + activeMoveDir.y;
                 if (grid[ny] && grid[ny][nx] === 0) {
@@ -223,10 +219,8 @@
             ctx.lineWidth = 1.2;
             rippleDecors.forEach(r => {
                 for(let j = 1; j <= r.count; j++) {
-                    ctx.beginPath();
-                    ctx.arc(r.x, r.y, r.baseRadius * j, 0, Math.PI * 2);
-                    ctx.setLineDash([5, 8]);
-                    ctx.stroke();
+                    ctx.beginPath(); ctx.arc(r.x, r.y, r.baseRadius * j, 0, Math.PI * 2);
+                    ctx.setLineDash([5, 8]); ctx.stroke();
                 }
             });
             ctx.restore();
@@ -234,32 +228,14 @@
             for (let y = 0; y < ROWS; y++) {
                 for (let x = 0; x < COLS; x++) {
                     if (grid[y][x] === 1) {
-                        const px = GAME_X_OFFSET + x * CELL;
-                        const py = GAME_Y_OFFSET + y * CELL;
-                        ctx.fillStyle = "#8D7B6D"; 
-                        ctx.beginPath();
-                        ctx.roundRect ? ctx.roundRect(px, py, CELL, CELL, 3) : ctx.rect(px, py, CELL, CELL);
-                        ctx.fill();
-                        ctx.fillStyle = "#7A685B"; 
-                        ctx.fillRect(px + 3, py + 3, CELL - 6, CELL - 6);
-                        ctx.strokeStyle = "rgba(255,255,255,0.15)";
-                        ctx.lineWidth = 1;
-                        ctx.beginPath();
-                        ctx.moveTo(px, py + CELL); ctx.lineTo(px, py); ctx.lineTo(px + CELL, py);
-                        ctx.stroke();
-                        ctx.fillStyle = "#4A3B2F"; 
-                        if((x + y) % 3 === 0) ctx.fillRect(px + CELL/2, py + CELL/4, 1.5, 1.5);
-                        ctx.fillStyle = "#8D7B6D";
-                        if (x < COLS - 1 && grid[y][x + 1] === 1) {
-                            ctx.fillRect(px + CELL - 3, py, 6, CELL);
-                            ctx.fillStyle = "#7A685B"; ctx.fillRect(px + CELL - 3, py + 3, 6, CELL - 6);
-                            ctx.fillStyle = "#8D7B6D";
-                        }
-                        if (y < ROWS - 1 && grid[y + 1][x] === 1) {
-                            ctx.fillRect(px, py + CELL - 3, CELL, 6);
-                            ctx.fillStyle = "#7A685B"; ctx.fillRect(px + 3, py + CELL - 3, CELL - 6, 6);
-                            ctx.fillStyle = "#8D7B6D";
-                        }
+                        const px = GAME_X_OFFSET + x * CELL, py = GAME_Y_OFFSET + y * CELL;
+                        ctx.fillStyle = "#8D7B6D"; ctx.beginPath();
+                        if (ctx.roundRect) ctx.roundRect(px, py, CELL, CELL, 3); else ctx.rect(px, py, CELL, CELL); ctx.fill();
+                        ctx.fillStyle = "#7A685B"; ctx.fillRect(px + 3, py + 3, CELL - 6, CELL - 6);
+                        ctx.strokeStyle = "rgba(255,255,255,0.15)"; ctx.lineWidth = 1;
+                        ctx.beginPath(); ctx.moveTo(px, py+CELL); ctx.lineTo(px, py); ctx.lineTo(px+CELL, py); ctx.stroke();
+                        if (x < COLS - 1 && grid[y][x + 1] === 1) { ctx.fillStyle = "#8D7B6D"; ctx.fillRect(px + CELL - 3, py, 6, CELL); ctx.fillStyle = "#7A685B"; ctx.fillRect(px + CELL - 3, py + 3, 6, CELL - 6); }
+                        if (y < ROWS - 1 && grid[y + 1][x] === 1) { ctx.fillStyle = "#8D7B6D"; ctx.fillRect(px, py + CELL - 3, CELL, 6); ctx.fillStyle = "#7A685B"; ctx.fillRect(px + 3, py + CELL - 3, CELL - 6, 6); }
                     }
                 }
             }
@@ -268,72 +244,41 @@
             ctx.font = "12px Arial";
             dogs.forEach(dog => ctx.fillText("🐕", GAME_X_OFFSET + dog.x * CELL + CELL/2, GAME_Y_OFFSET + dog.y * CELL + CELL/2));
 
-            ctx.save(); 
-            ctx.translate(charX, charY);
-            const breathe = Math.sin(Date.now() / 180) * 0.1; 
-            ctx.scale(1 + breathe, 1 - breathe);
-            ctx.fillStyle = "#D99FA9";
-            drawRoundedRect(ctx, -6, -15, 5, 11, 2.5);
-            drawRoundedRect(ctx, 1, -15, 5, 11, 2.5);
-            ctx.fillStyle = "#E9BFC7"; 
-            drawRoundedRect(ctx, -4.5, -13, 2, 7, 1);
-            drawRoundedRect(ctx, 2.5, -13, 2, 7, 1);
-            ctx.fillStyle = "#ebd47d";
-            ctx.beginPath();
-            ctx.arc(0, -3, 8.5, 0, Math.PI * 2); 
-            ctx.fill();
-            ctx.strokeStyle = "rgba(255,255,255,0.6)";
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            ctx.fillStyle = "#4A3B2F"; 
-            ctx.beginPath();
-            ctx.arc(-3.5, -4, 1.8, 0, Math.PI * 2); 
-            ctx.arc(3.5, -4, 1.8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "white";
-            ctx.beginPath();
-            ctx.arc(-4, -4.5, 0.6, 0, Math.PI * 2);
-            ctx.arc(3, -4.5, 0.6, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "rgba(255, 133, 161, 0.4)";
-            ctx.beginPath();
-            ctx.arc(-5.5, -0.5, 2.5, 0, Math.PI * 2); 
-            ctx.arc(5.5, -0.5, 2.5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "#FF85A1";
-            ctx.beginPath();
-            ctx.arc(0, -1.5, 1.2, 0, Math.PI * 2);
-            ctx.fill();
+            // 绘制萌兔玩家
+            ctx.save(); ctx.translate(charX, charY);
+            const br = Math.sin(Date.now() / 180) * 0.1; ctx.scale(1 + br, 1 - br);
+            ctx.fillStyle = "#D99FA9"; drawRoundedRect(ctx,-6,-15,5,11,2.5); drawRoundedRect(ctx,1,-15,5,11,2.5);
+            ctx.fillStyle = "#E9BFC7"; drawRoundedRect(ctx,-4.5,-13,2,7,1); drawRoundedRect(ctx,2.5,-13,2,7,1);
+            ctx.fillStyle = "#ebd47d"; ctx.beginPath(); ctx.arc(0,-3,8.5,0,7); ctx.fill();
+            ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 1; ctx.stroke();
+            ctx.fillStyle = "#4A3B2F"; ctx.beginPath(); ctx.arc(-3.5,-4,1.8,0,7); ctx.arc(3.5,-4,1.8,0,7); ctx.fill();
+            ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(-4,-4.5,0.6,0,7); ctx.arc(3,-4.5,0.6,0,7); ctx.fill();
+            ctx.fillStyle = "rgba(255,133,161,0.4)"; ctx.beginPath(); ctx.arc(-5.5,-0.5,2.5,0,7); ctx.arc(5.5,-0.5,2.5,0,7); ctx.fill();
+            ctx.fillStyle = "#FF85A1"; ctx.beginPath(); ctx.arc(0,-1.5,1.2,0,7); ctx.fill();
             ctx.restore();
 
-            const viewRadius = Math.max(40, 80 - (60 - timeLeft));
-            const gradient = ctx.createRadialGradient(charX, charY, viewRadius * 0.3, charX, charY, viewRadius);
+            // --- 难度核心：迷雾更窄更浓 ---
+            const viewRadius = Math.max(35, 75 - (60 - timeLeft)); // 视野缩小到极窄
+            const gradient = ctx.createRadialGradient(charX, charY, viewRadius * 0.2, charX, charY, viewRadius);
             gradient.addColorStop(0, "rgba(235, 231, 228, 0)");
-            gradient.addColorStop(0.6, "rgba(235, 231, 228, 0.4)");
-            gradient.addColorStop(1, "rgba(235, 231, 228, 0.98)");
+            gradient.addColorStop(0.7, "rgba(235, 231, 228, 0.4)");
+            gradient.addColorStop(1, "rgba(235, 231, 228, 0.99)"); // 几乎全黑
             ctx.fillStyle = gradient;
             ctx.fillRect(0, GAME_Y_OFFSET - 10, 400, ROWS * CELL + 20);
 
             if (messageTip.timer > 0) {
-                ctx.fillStyle = "#8a515b"; 
-                ctx.font = "bold 18px Quicksand, Arial";
-                ctx.textAlign = "center";
-                ctx.fillText(messageTip.text, charX, charY - 40 - (50 - messageTip.timer));
-                messageTip.timer--;
+                ctx.fillStyle = "#8a515b"; ctx.font = "bold 18px Quicksand, Arial"; ctx.textAlign = "center";
+                ctx.fillText(messageTip.text, charX, charY - 40 - (50 - messageTip.timer)); messageTip.timer--;
             }
-
             drawUI();
         }
 
         function drawExitPortal(ctx, x, y) {
             const pulse = Math.sin(Date.now() / 300) * 4;
-            ctx.fillStyle = "rgba(155, 183, 173, 0.4)";
-            ctx.beginPath(); ctx.arc(x, y, 12 + pulse, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = "#9BB7AD";
-            ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "rgba(155, 183, 173, 0.4)"; ctx.beginPath(); ctx.arc(x, y, 12 + pulse, 0, 7); ctx.fill();
+            ctx.fillStyle = "#9BB7AD"; ctx.beginPath(); ctx.arc(x, y, 8, 0, 7); ctx.fill();
             ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
-            ctx.fillStyle = "white"; ctx.font = "bold 7px Arial"; ctx.textAlign = "center";
-            ctx.fillText("出口", x, y + 2.5);
+            ctx.fillStyle = "white"; ctx.font = "bold 7px Arial"; ctx.textAlign = "center"; ctx.fillText("出口", x, y + 2.5);
         }
 
         function drawUI() {
@@ -341,40 +286,30 @@
             ctx.fillStyle = timeLeft < 10 ? "#FF85A1" : "#9BB7AD";
             ctx.font = "bold 18px Quicksand, Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText(`剩余时间: ${timeLeft}s`, 200, 43);
-
             for (let k in uiBtns) {
                 let btn = uiBtns[k]; ctx.save();
                 ctx.fillStyle = btn.active ? "rgba(217, 159, 169, 0.9)" : "rgba(255,255,255,0.7)";
                 ctx.strokeStyle = "white"; ctx.lineWidth = 4;
                 drawRoundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 20); ctx.stroke();
                 if (btn.img.complete && btn.img.naturalWidth !== 0) {
-                    const iconSize = 28; if(btn.active) ctx.filter = 'brightness(0) invert(1)';
-                    else ctx.globalAlpha = 0.6;
-                    ctx.drawImage(btn.img, btn.x + (btn.w-iconSize)/2, btn.y + (btn.h-iconSize)/2, iconSize, iconSize);
+                    const s = 28; if(btn.active) ctx.filter = 'brightness(0) invert(1)'; else ctx.globalAlpha = 0.6;
+                    ctx.drawImage(btn.img, btn.x + (btn.w-s)/2, btn.y + (btn.h-s)/2, s, s);
                 }
                 ctx.restore();
             }
         }
 
         function endGame(win) {
-            isGameOver = true; 
-            clearInterval(timerInterval);
+            isGameOver = true; clearInterval(timerInterval);
             const title = document.getElementById('modal-title'), desc = document.getElementById('modal-desc');
             if (win) { CandyAudio.play('ding'); title.innerText = "成功脱出！🍭"; title.style.color = "#9BB7AD"; desc.innerText = `恭喜逃离迷雾！剩余时间: ${timeLeft}s`; }
             else { CandyAudio.play('sad'); title.innerText = "时间耗尽 🍩"; title.style.color = "#D99FA9"; desc.innerText = "被困在迷雾里了..."; }
             modal.style.display = 'flex';
         }
 
-        function handleReset() { 
-            CandyAudio.play('click'); 
-            init(); 
-        }
+        function handleReset() { CandyAudio.play('click'); init(); }
+        function drawRoundedRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath(); ctx.fill(); }
 
-        function drawRoundedRect(ctx, x, y, w, h, r) {
-            ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath(); ctx.fill();
-        }
-
-        // 首次运行
         init();
     </script>
 </body>
