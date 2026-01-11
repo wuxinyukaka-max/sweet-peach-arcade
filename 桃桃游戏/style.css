@@ -1,0 +1,195 @@
+/* --- 莫兰迪·糖果 2.0 (竖屏自适应版) --- */
+:root {
+    --candy-pink: #D99FA9;    /* 灰调粉 */
+    --candy-mint: #9BB7AD;    /* 鼠尾草绿 */
+    --candy-blue: #A1B5D0;    /* 柔雾蓝 */
+    --candy-yellow: #E6D5B8;  /* 奶茶黄 */
+    --bg-main: #F4F1F0;       /* 大背景：燕麦色 */
+    --bg-canvas: #EBE7E4;     /* 画布底色：乳酪灰 */
+    --bg-card: #FDFBFA;       /* 容器/按钮色：奶白色 */
+    --text-dark: #6B5E5E;     /* 文字颜色：巧克力啡 */
+}
+
+* { 
+    box-sizing: border-box; 
+    -webkit-tap-highlight-color: transparent; 
+    user-select: none; 
+}
+
+body, html { 
+    margin: 0; padding: 0; width: 100%; height: 100%; 
+    background-color: var(--bg-main); 
+    color: var(--text-dark); 
+    font-family: 'Segoe UI', "Quicksand", "Microsoft YaHei", sans-serif; 
+    overflow: hidden; /* 防止手机端橡皮筋回弹滚动 */
+    touch-action: manipulation; /* 核心：禁止双击缩放 */
+}
+
+/* 背景波点 */
+.candy-bg {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-image: radial-gradient(rgba(180, 160, 150, 0.12) 1.2px, transparent 1.2px);
+    background-size: 30px 30px; 
+    z-index: -1;
+}
+
+/* --- 核心视图包装：改为垂直堆叠 --- */
+#canvas-wrap { 
+    width: 100%; 
+    height: 100%; 
+    display: flex; 
+    flex-direction: column; /* 竖向排列 */
+    align-items: center; 
+    justify-content: center; /* 整体在屏幕居中 */
+    padding: 20px;
+}
+
+canvas { 
+    border: 6px solid var(--bg-card); 
+    border-radius: 35px; 
+    background-color: var(--bg-canvas); 
+    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.05); 
+    /* 竖屏核心限制：宽度最大占95%，高度留出控制器的空间 */
+    max-width: 95vw;
+    max-height: 60vh; 
+    width: auto;
+    height: auto;
+    display: block;
+}
+
+/* --- 控制器布局：适配竖屏操作 --- */
+.controls {
+    position: relative; /* 改为相对定位，自然排在画布下方 */
+    margin-top: 25px; /* 画布和按钮的间距 */
+    width: 100%; 
+    display: flex; 
+    justify-content: space-around; /* 按钮在左右分布 */
+    align-items: center;
+    padding: 0 20px;
+    pointer-events: auto;
+    z-index: 200;
+}
+
+.ctrl-panel { 
+    display: flex; 
+    align-items: center; 
+    gap: 15px;
+}
+
+/* --- 摇杆：微调尺寸适配手持 --- */
+.joy-base {
+    width: 120px; 
+    height: 120px; 
+    border: 4px solid rgba(255, 255, 255, 0.4); 
+    border-radius: 50%; 
+    background: rgba(155, 183, 173, 0.35); 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+    position: relative;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.joy-stick {
+    width: 55px; 
+    height: 55px; 
+    background: rgba(217, 159, 169, 0.8); 
+    border: 3px solid rgba(255, 255, 255, 0.6);
+    border-radius: 50%; 
+    box-shadow: 0 4px 12px rgba(217, 159, 169, 0.2);
+    touch-action: none;
+    cursor: grab;
+}
+
+/* --- 按钮样式：竖屏紧凑化 --- */
+.cute-btn {
+    width: 68px; 
+    height: 68px; 
+    border: 4px solid rgba(255, 255, 255, 0.5);
+    background: rgba(217, 159, 169, 0.8); 
+    border-radius: 22px;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    font-size: 1.4rem; 
+    color: white; 
+    font-weight: bold;
+    box-shadow: 0 5px 0px rgba(180, 140, 140, 0.2); 
+    cursor: pointer;
+    transition: all 0.1s;
+    backdrop-filter: blur(4px);
+}
+
+.btn-mint { 
+    background: rgba(155, 183, 173, 0.8); 
+    box-shadow: 0 5px 0px rgba(130, 150, 140, 0.2); 
+}
+
+.cute-btn:active { 
+    transform: translateY(3px); 
+    box-shadow: 0 1px 0px rgba(180, 140, 140, 0.2); 
+}
+
+/* 结算弹窗按钮 */
+.cute-btn.wide {
+    width: auto; 
+    min-width: 180px; 
+    padding: 0 30px; 
+    height: 60px; 
+    border-radius: 30px;
+    font-size: 1.1rem;
+}
+
+/* --- HUD 与 弹窗 --- */
+.score-box {
+    background: var(--bg-card); 
+    padding: 8px 20px; 
+    border-radius: 18px; 
+    border: 1px solid rgba(217, 159, 169, 0.2); 
+    color: var(--candy-pink); 
+    font-size: 0.95rem; 
+    font-weight: 600; 
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+}
+
+.modal-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(107, 94, 94, 0.2); 
+    display: none; 
+    align-items: center; 
+    justify-content: center; 
+    z-index: 500; 
+    backdrop-filter: blur(12px); 
+}
+
+.modal-content {
+    background: var(--bg-card); 
+    width: 85%; 
+    max-width: 320px; 
+    padding: 35px 25px;
+    border-radius: 40px; 
+    border: 1px solid rgba(255,255,255,0.8);
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    text-align: center;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.06);
+}
+
+/* 返回按钮：固定在左上角 */
+.back-home {
+    position: absolute; 
+    top: 20px; 
+    left: 20px; 
+    background: var(--bg-card); 
+    border-radius: 12px; 
+    color: var(--candy-pink); 
+    padding: 8px 16px; 
+    text-decoration: none; 
+    font-size: 0.8rem;
+    font-weight: 600; 
+    z-index: 1000;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+}
