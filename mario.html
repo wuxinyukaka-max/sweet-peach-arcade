@@ -2,48 +2,55 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CAKE_JUMP // 糖果大冒险</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>CAKE_JUMP // 一体化糖果版</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* --- 竖屏适配核心布局 --- */
-        body {
-            margin: 0; padding: 0; width: 100%; height: 100vh;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background-color: var(--bg-main); overflow: hidden; touch-action: manipulation;
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            background-color: var(--bg-main); overflow: hidden;
+            /* 允许缩放，但不影响内部比例 */
+            touch-action: manipulation;
         }
 
-        #hud {
-            position: absolute; top: 15px; width: 100%;
-            display: flex; justify-content: center; pointer-events: none; z-index: 10;
-        }
-        .info-box {
-            background: white; padding: 8px 18px; border-radius: 20px;
-            border: 2.5px solid var(--candy-pink); color: var(--candy-pink);
-            font-size: 0.9rem; font-weight: bold; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); margin: 0 5px;
-        }
-
-        .game-capsule { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; gap: -30px; }
-        
-        canvas { 
-            background: #EBE7E4; border: 6px solid white; border-radius: 35px;
-            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.05);
-            max-height: 55vh; max-width: 85vw; width: auto; height: auto;
+        /* 游戏容器：让画布始终保持比例并居中 */
+        #game-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
         }
 
-        .controls { position: static !important; display: flex; justify-content: center; gap: 15px; padding: 10px; pointer-events: auto; }
+        canvas {
+            background: #EBE7E4;
+            border: 6px solid white;
+            border-radius: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            /* 关键：自适应屏幕，保持比例 */
+            max-width: 95vw;
+            max-height: 90vh;
+            width: auto;
+            height: auto;
+            display: block;
+            image-rendering: auto;
+        }
 
-        /* 弹窗居中 */
+        /* 隐藏之前的外部控制器和HUD */
+        #hud, .controls { display: none !important; }
+
+        /* 结算弹窗 - 依然使用 HTML 保证文字渲染清晰 */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(107, 94, 94, 0.2); display: none; 
-            align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px);
+            background: rgba(107, 94, 94, 0.3);
+            display: none; align-items: center; justify-content: center;
+            z-index: 2000; backdrop-filter: blur(10px);
         }
         .modal-content {
-            background: white; width: 85%; max-width: 320px; padding: 35px 25px;
-            border-radius: 40px; border: 1px solid rgba(255, 255, 255, 0.5);
-            display: flex; flex-direction: column; align-items: center; text-align: center;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.1);
+            background: white; width: 80%; max-width: 300px; padding: 30px;
+            border-radius: 40px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
         }
     </style>
 </head>
@@ -51,173 +58,201 @@
     <div class="candy-bg"></div>
     <a href="index.html" class="back-home" style="position:absolute; top:20px; left:20px; z-index:110;">🏠 返回</a>
 
-    <div id="hud">
-        <div class="info-box">⭐星星: <span id="score">0</span></div>
-        <div class="info-box">🚩距离: <span id="dist">0</span>m</div>
-    </div>
-
-    <div class="game-capsule">
-        <div id="canvas-wrap">
-            <canvas id="gameCanvas" width="400" height="600"></canvas>
-        </div>
-
-        <div class="controls">
-            <div class="ctrl-panel">
-                <div class="cute-btn btn-mint" id="btn-left">←</div>
-                <div class="cute-btn btn-mint" id="btn-right">→</div>
-            </div>
-            <div class="ctrl-panel">
-                <div class="cute-btn" id="btn-jump">↑</div>
-                <div class="cute-btn btn-mint" id="btn-down">↓</div>
-            </div>
-        </div>
+    <div id="game-container">
+        <!-- 内部比例设定为 400 x 750 (竖屏长胶囊) -->
+        <canvas id="gameCanvas" width="400" height="750"></canvas>
     </div>
 
     <div id="over-modal" class="modal-overlay">
         <div class="modal-content">
-            <h2 id="result-title" style="color:var(--candy-pink); margin:0;">哎呀！</h2>
-            <p id="result-desc" style="color:#998888; margin:15px 0 25px;"></p>
-            <button class="cute-btn wide" onclick="resetGame()" style="width:200px; height:55px; border-radius:30px;">再来一局</button>
+            <h2 id="result-title" style="color:var(--candy-pink); margin:0; font-size:1.5rem;">哎呀！</h2>
+            <p id="result-desc" style="color:#998888; margin:10px 0 20px; font-size: 0.9rem;"></p>
+            <button class="cute-btn wide" onclick="resetGame()" style="width:100%; height:50px; border-radius:25px; font-size: 1rem;">再来一局</button>
         </div>
     </div>
 
     <script>
-        // --- 1. 糖果音效引擎 ---
+        // --- 1. 音效引擎 ---
         const CandyAudio = {
             ctx: null,
             init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (this.ctx.state === 'suspended') this.ctx.resume(); },
             play(type) {
                 this.init(); const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.connect(g); g.connect(this.ctx.destination);
                 const n = this.ctx.currentTime;
-                if(type==='jump'){ o.type='sine'; o.frequency.setValueAtTime(150,n); o.frequency.exponentialRampToValueAtTime(600,n+0.2); g.gain.setValueAtTime(0.1,n); }
-                if(type==='star'){ o.type='triangle'; o.frequency.setValueAtTime(600,n); o.frequency.exponentialRampToValueAtTime(1200,n+0.1); g.gain.setValueAtTime(0.1,n); }
+                if(type==='jump'){ o.type='sine'; o.frequency.setValueAtTime(150,n); o.frequency.exponentialRampToValueAtTime(650,n+0.2); g.gain.setValueAtTime(0.1,n); }
+                if(type==='star'){ o.type='triangle'; o.frequency.setValueAtTime(600,n); o.frequency.exponentialRampToValueAtTime(1300,n+0.15); g.gain.setValueAtTime(0.1,n); }
                 if(type==='break'){ o.type='square'; o.frequency.setValueAtTime(100,n); o.frequency.linearRampToValueAtTime(10,n+0.1); g.gain.setValueAtTime(0.05,n); }
-                if(type==='dead'){ o.type='square'; o.frequency.setValueAtTime(200,n); o.frequency.linearRampToValueAtTime(50,n+0.5); g.gain.setValueAtTime(0.1,n); }
+                if(type==='dead'){ o.type='square'; o.frequency.setValueAtTime(250,n); o.frequency.linearRampToValueAtTime(50,n+0.4); g.gain.setValueAtTime(0.1,n); }
                 o.start(); o.stop(n+0.5);
             }
         };
 
-        // --- 2. 游戏引擎逻辑 ---
+        // --- 2. 核心变量 ---
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
-        const scoreEl = document.getElementById('score'), distEl = document.getElementById('dist'), modal = document.getElementById('over-modal');
+        const modal = document.getElementById('over-modal');
 
-        const GRAVITY = 0.8, JUMP_FORCE = -15, SPEED = 5, MAP_LENGTH = 12000; // 地图大幅延长
-        let player, platforms, cameraX, score, isGameOver, keys = { left: false, right: false }, animationId = null;
+        const BASE_WIDTH = 400, BASE_HEIGHT = 750;
+        const GRAVITY = 0.8, JUMP_FORCE = -15, SPEED = 5, MAP_LENGTH = 12000;
+        
+        let player, platforms, cameraX, score, isGameOver, keys = { L:0, R:0, U:0, D:0 }, animationId = null;
+
+        // UI 按键区域定义 (相对于 400x750 比例)
+        const uiButtons = {
+            left:   { x: 30,  y: 640, w: 70, h: 70, icon: '◀', active: false },
+            right:  { x: 120, y: 640, w: 70, h: 70, icon: '▶', active: false },
+            jump:   { x: 210, y: 640, w: 70, h: 70, icon: '▲', active: false },
+            down:   { x: 300, y: 640, w: 70, h: 70, icon: '▼', active: false }
+        };
 
         function init() {
             if (animationId) cancelAnimationFrame(animationId);
-            // 修正：玩家生成位置在第一块地面的正上方
-            player = { x: 100, y: 300, w: 32, h: 32, vx: 0, vy: 0, grounded: false };
-            score = 0; cameraX = 0; isGameOver = false; keys = { left: false, right: false };
-            scoreEl.innerText = score; distEl.innerText = 0; modal.style.display = 'none';
+            isGameOver = false; score = 0; cameraX = 0;
+            Object.keys(keys).forEach(k => keys[k] = 0);
+            player = { x: 50, y: 400, w: 32, h: 32, vx: 0, vy: 0, grounded: false };
+            modal.style.display = 'none';
             generateMap();
             loop();
         }
 
         function generateMap() {
-            // 起始平台变长，防止开局掉落
-            platforms = [{ x: 0, y: 480, w: 600, h: 120, type: 'ground', active: true }];
+            platforms = [{ x: 0, y: 550, w: 600, h: 100, type: 'ground', active: true }];
             let cx = 650;
             while (cx < MAP_LENGTH) {
                 let w = 80 + Math.random() * 120;
                 let lastP = platforms[platforms.length - 1];
-                // 真正的上下多层级：Y 轴跨度加大
-                let y = Math.max(120, Math.min(500, lastP.y + (Math.random() * 240 - 120)));
-                
+                let y = Math.max(150, Math.min(500, lastP.y + (Math.random() * 240 - 120)));
                 let rand = Math.random();
-                let type = 'cookie';
-                if(rand > 0.85) type = 'brick';     // 可顶碎
-                else if(rand > 0.7) type = 'mystery'; // 藏星星
-                
-                platforms.push({ x: cx, y: y, w: w, h: 32, type: type, active: true });
-                cx += w + 70 + Math.random() * 100;
+                let type = rand > 0.85 ? 'brick' : (rand > 0.7 ? 'mystery' : 'cookie');
+                platforms.push({ x: cx, y, w, h: 30, type, active: true });
+                cx += w + 80 + Math.random() * 100;
             }
-            // 远方的终点
-            platforms.push({ x: MAP_LENGTH, y: 400, w: 500, h: 200, type: 'end', active: true });
+            platforms.push({ x: MAP_LENGTH, y: 450, w: 500, h: 200, type: 'end', active: true });
         }
 
-        // --- 3. 物理与碰撞 ---
+        // --- 3. 交互系统 (Canvas 内坐标转换) ---
+        function getTouchPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const touch = e.touches ? e.touches[0] : e;
+            return {
+                x: (touch.clientX - rect.left) * scaleX,
+                y: (touch.clientY - rect.top) * scaleY
+            };
+        }
+
+        function handleInput(e, isStart) {
+            e.preventDefault();
+            CandyAudio.init();
+            const pos = getTouchPos(e);
+            
+            // 检测点击了哪个 UI 区域
+            for (let b in uiButtons) {
+                let btn = uiButtons[b];
+                if (pos.x >= btn.x && pos.x <= btn.x + btn.w && pos.y >= btn.y && pos.y <= btn.y + btn.h) {
+                    btn.active = isStart;
+                    if (b === 'left') keys.L = isStart;
+                    if (b === 'right') keys.R = isStart;
+                    if (b === 'jump' && isStart && player.grounded) { 
+                        player.vy = JUMP_FORCE; player.grounded = false; CandyAudio.play('jump'); 
+                    }
+                }
+            }
+        }
+
+        canvas.addEventListener('pointerdown', (e) => handleInput(e, true));
+        window.addEventListener('pointerup', () => {
+            for (let b in uiButtons) uiButtons[b].active = false;
+            keys.L = keys.R = false;
+        });
+
+        // --- 4. 渲染循环 ---
+        function loop() {
+            if (isGameOver) return;
+            update();
+            draw();
+            animationId = requestAnimationFrame(loop);
+        }
+
         function update() {
-            if (keys.left) player.vx = -SPEED; else if (keys.right) player.vx = SPEED; else player.vx *= 0.85;
+            if (keys.L) player.vx = -SPEED; else if (keys.R) player.vx = SPEED; else player.vx *= 0.85;
             player.vy += GRAVITY; player.x += player.vx; player.y += player.vy;
             player.grounded = false;
 
             platforms.forEach(p => {
                 if (!p.active && p.type !== 'mystery_used') return;
-                
-                // 碰撞检测逻辑
-                if (player.x + player.w > p.x && player.x < p.x + p.w &&
-                    player.y + player.h > p.y && player.y < p.y + p.h) {
-                    
-                    // 1. 脚部碰撞（落地）
+                if (player.x + player.w > p.x && player.x < p.x + p.w && player.y + player.h > p.y && player.y < p.y + p.h) {
                     if (player.vy > 0 && player.y + player.h < p.y + p.h/2 + player.vy + 2) {
                         player.y = p.y - player.h; player.vy = 0; player.grounded = true;
                         if (p.type === 'end') win();
-                    } 
-                    // 2. 头部碰撞（顶砖块）
-                    else if (player.vy < 0 && player.y > p.y + p.h/2) {
-                        player.y = p.y + p.h; player.vy = 1; // 撞头后向下弹
+                    } else if (player.vy < 0 && player.y > p.y + p.h/2) {
+                        player.y = p.y + p.h; player.vy = 1;
                         handleBlockHit(p);
-                    }
-                    // 3. 侧面碰撞
-                    else if (player.x + player.w > p.x && player.x < p.x + p.w) {
-                        player.x -= player.vx; player.vx = 0;
                     }
                 }
             });
 
-            // 摄像机跟随
             cameraX = Math.max(cameraX, player.x - 100);
-            distEl.innerText = Math.floor(player.x / 10);
-
-            // 死亡逻辑
-            if (player.y > 650) endGame("掉进奶油池了！🍩", "别灰心，再试一次！");
+            if (player.y > 650) endGame("哎呀，掉下去了！🍩", "收集了 " + score + " 颗星星");
             if (player.x < cameraX - 10) player.x = cameraX - 10;
         }
 
         function handleBlockHit(p) {
-            if (p.type === 'brick') {
-                p.active = false; CandyAudio.play('break');
-            } else if (p.type === 'mystery') {
-                p.type = 'mystery_used';
-                score += 5; scoreEl.innerText = score;
-                CandyAudio.play('star');
-            }
+            if (p.type === 'brick') { p.active = false; CandyAudio.play('break'); }
+            else if (p.type === 'mystery') { p.type = 'mystery_used'; score += 5; CandyAudio.play('star'); }
         }
 
-        // --- 4. 绘图与美效 ---
+        // --- 5. 画布内部 UI 绘制 ---
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制场景
             ctx.save(); ctx.translate(-cameraX, 0);
-
             platforms.forEach(p => {
                 if (!p.active && p.type !== 'mystery_used') return;
-                
                 if (p.type === 'end') {
                     ctx.fillStyle = "#D99FA9"; drawRoundedRect(ctx, p.x, p.y, p.w, p.h, 30);
                     ctx.font = "50px Arial"; ctx.fillText("🎂", p.x + p.w/2 - 25, p.y - 20);
                 } else {
-                    // 莫兰迪配色方案
-                    if(p.type === 'brick') ctx.fillStyle = "#E6D5B8"; // 威化色
-                    else if(p.type === 'mystery') ctx.fillStyle = "#FFB6C1"; // 礼盒色
-                    else if(p.type === 'mystery_used') ctx.fillStyle = "#D1C7C7"; // 失效灰色
-                    else ctx.fillStyle = p.type === 'ground' ? "#A89A90" : "#9BB7AD";
-                    
+                    ctx.fillStyle = p.type === 'brick' ? "#E6D5B8" : (p.type === 'mystery' ? "#FFB6C1" : (p.type==='mystery_used'?"#D1C7C7": (p.type === 'ground' ? "#A89A90" : "#9BB7AD")));
                     drawRoundedRect(ctx, p.x, p.y, p.w, p.h, 10);
-                    // 绘制星星标识（如果是隐藏砖块）
                     if(p.type === 'mystery') drawJellyStar(ctx, p.x + p.w/2, p.y + 16, 8, true);
                 }
             });
-
-            // 绘制玩家 (草莓酱块)
             ctx.fillStyle = "#D99FA9"; drawRoundedRect(ctx, player.x, player.y, player.w, player.h, 10);
-            ctx.fillStyle = "white"; ctx.fillRect(player.x+22, player.y+6, 4, 4); ctx.fillRect(player.x+6, player.y+6, 4, 4);
-            ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.beginPath(); ctx.ellipse(player.x+10, player.y+10, 7, 4, Math.PI/4, 0, 7); ctx.fill();
-
             ctx.restore();
+
+            // --- 核心：绘制 Canvas 内部 UI ---
+            
+            // 1. 顶部积分 HUD
+            ctx.fillStyle = "rgba(255,255,255,0.9)";
+            drawRoundedRect(ctx, 110, 25, 180, 45, 22.5); // 积分底座
+            ctx.fillStyle = "#D99FA9";
+            ctx.font = "bold 18px Quicksand, Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(`⭐ ${score}  🚩 ${Math.floor(player.x/10)}m`, 200, 54);
+
+            // 2. 底部控制按钮
+            for (let b in uiButtons) {
+                let btn = uiButtons[b];
+                ctx.save();
+                // 按钮底座：点击时变实色，平时半透明
+                ctx.fillStyle = btn.active ? "rgba(217, 159, 169, 0.9)" : "rgba(155, 183, 173, 0.4)";
+                ctx.strokeStyle = "rgba(255,255,255,0.8)";
+                ctx.lineWidth = 4;
+                drawRoundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 18);
+                ctx.stroke();
+
+                // 按钮图标
+                ctx.fillStyle = "white";
+                ctx.font = "bold 30px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText(btn.icon, btn.x + btn.w/2, btn.y + btn.h/2 + 10);
+                ctx.restore();
+            }
         }
 
-        // 高级金黄色果冻星绘制函数
+        // --- 工具函数 ---
         function drawJellyStar(ctx, x, y, r, isMini = false) {
             ctx.save(); ctx.translate(x, y); ctx.beginPath();
             for (let i = 0; i < 5; i++) {
@@ -228,30 +263,17 @@
             let g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
             g.addColorStop(0, '#F7DC6F'); g.addColorStop(1, '#D4AC0D');
             ctx.fillStyle = g; ctx.fill();
-            if(!isMini){ // 大星星有高光
-                ctx.strokeStyle = "white"; ctx.lineWidth = 1; ctx.stroke();
-                ctx.fillStyle = "rgba(255, 255, 255, 0.6)"; ctx.beginPath(); ctx.ellipse(-r/3, -r/3, r/4, r/8, Math.PI/4, 0, 7); ctx.fill();
-            }
+            if(!isMini){ ctx.strokeStyle = "white"; ctx.stroke(); }
             ctx.restore();
         }
 
-        // --- 5. 交互绑定 ---
-        const bind = (id, key) => {
-            const el = document.getElementById(id);
-            el.addEventListener('pointerdown', (e) => { 
-                e.preventDefault(); CandyAudio.init();
-                if(key==='jump') { if(player.grounded){ player.vy = JUMP_FORCE; player.grounded = false; CandyAudio.play('jump'); } } 
-                else keys[key] = true;
-            });
-            window.addEventListener('pointerup', () => keys[key] = false);
-        };
-        bind('btn-left', 'left'); bind('btn-right', 'right'); bind('btn-jump', 'jump');
+        function drawRoundedRect(ctx, x, y, w, h, r) {
+            ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath(); ctx.fill();
+        }
 
-        function loop() { if (!isGameOver) { update(); draw(); animationId = requestAnimationFrame(loop); } }
-        function win() { CandyAudio.play('star'); endGame("美味到达！🎉", "你成功拿到了终极大蛋糕！星星: " + score); }
+        function win() { CandyAudio.play('star'); endGame("美味到达！🎉", "你成功拿到了终极大蛋糕！收集星星: " + score); }
         function endGame(t, d) { isGameOver = true; CandyAudio.play('dead'); modal.style.display = 'flex'; document.getElementById('result-title').innerText = t; document.getElementById('result-desc').innerText = d; }
         function resetGame() { CandyAudio.init(); init(); }
-        function drawRoundedRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath(); ctx.fill(); }
 
         init();
     </script>
