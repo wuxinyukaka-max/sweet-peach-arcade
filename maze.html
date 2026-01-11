@@ -2,56 +2,112 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>SWEET_MAZE // 曲奇迷宫</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* 顶部信息栏 */
+        /* --- 1. 竖屏居中布局 --- */
+        body {
+            margin: 0; padding: 0;
+            width: 100%; height: 100vh;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background-color: var(--bg-main);
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        /* 顶部信息栏 - 绝对定位 */
         #hud {
-            position: absolute; top: 15px; width: 100%;
+            position: absolute; top: 20px; width: 100%;
             display: flex; justify-content: center;
-            font-family: 'Arial Rounded MT Bold', sans-serif;
-            color: var(--candy-pink); pointer-events: none; z-index: 10;
+            pointer-events: none; z-index: 100;
         }
         .timer-box {
             background: white; padding: 8px 25px;
-            border-radius: 20px; border: 3px solid var(--candy-mint);
-            box-shadow: 0 4px 0 #92DCD4;
-            font-size: 1.1rem; font-weight: bold;
+            border-radius: 20px; border: 2.5px solid var(--candy-pink);
+            color: var(--candy-pink); font-size: 1rem; font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
-        #canvas-wrap { background: var(--bg-soft); }
+
+        /* 游戏整体容器 */
+        .game-capsule {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            width: 100%; gap: -30px;
+        }
+
+        #canvas-wrap {
+            height: auto !important;
+            display: flex !important;
+            justify-content: center;
+        }
+
+        canvas { 
+            background: #EBE7E4; /* 莫兰迪底色 */
+            border: 6px solid white;
+            border-radius: 35px;
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.05);
+            /* 竖屏优化比例 */
+            max-height: 50vh; 
+            max-width: 85vw;
+            width: auto; height: auto;
+            display: block;
+        }
+
+        /* 控制器：跟随文档流 */
+        .controls {
+            position: static !important;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            pointer-events: auto;
+        }
 
         /* 结算弹窗 - 完美居中 */
         .modal-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.85);
-            display: none; /* 初始隐藏 */
-            align-items: center; justify-content: center;
-            z-index: 1000; backdrop-filter: blur(8px);
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(107, 94, 94, 0.2);
+            display: none; align-items: center; justify-content: center;
+            z-index: 2000; backdrop-filter: blur(8px);
         }
         .modal-content {
-            background: white; width: 85%; max-width: 320px; padding: 35px 25px;
-            border-radius: 45px; border: 6px solid var(--candy-mint);
+            background: white; width: 85%; max-width: 320px; padding: 40px 30px;
+            border-radius: 45px; border: 1px solid rgba(255,255,255,0.5);
             display: flex; flex-direction: column; align-items: center; text-align: center;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.08);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.1);
         }
         .modal-content h2 { font-size: 1.6rem; color: var(--candy-pink); margin: 0 0 10px 0; }
         .modal-content p { font-size: 1rem; color: #998888; margin-bottom: 25px; }
+        
+        .back-home { position: absolute; top: 20px; left: 20px; z-index: 110; }
     </style>
 </head>
 <body>
     <div class="candy-bg"></div>
-    <a href="index.html" class="back-home">🏠 放弃</a>
+    <a href="index.html" class="back-home" id="back-link">🏠 放弃</a>
 
     <div id="hud">
-        <div class="timer-box">能量剩余: <span id="time-left">60</span>s</div>
+        <div class="timer-box">剩余能量: <span id="time-left">60</span>s</div>
     </div>
 
-    <div id="canvas-wrap">
-        <canvas id="gameCanvas" width="620" height="420"></canvas>
+    <!-- 游戏核心包 -->
+    <div class="game-capsule">
+        <div id="canvas-wrap">
+            <!-- 纵向比例：21x25 网格 -->
+            <canvas id="gameCanvas" width="420" height="500"></canvas>
+        </div>
+
+        <div class="controls">
+            <div class="ctrl-panel">
+                <div id="joy-base" class="joy-base">
+                    <div id="joy-stick" class="joy-stick"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- 结算弹窗结构 -->
+    <!-- 弹窗结构 -->
     <div id="over-modal" class="modal-overlay">
         <div class="modal-content">
             <h2 id="modal-title">哎呀！</h2>
@@ -60,70 +116,28 @@
         </div>
     </div>
 
-    <!-- 控制器 -->
-    <div class="controls">
-        <div class="ctrl-panel">
-            <div id="joy-base" class="joy-base">
-                <div id="joy-stick" class="joy-stick"></div>
-            </div>
-        </div>
-    </div>
-
     <script>
         // --- 1. 糖果音效引擎 ---
         const CandyAudio = {
             ctx: null,
-            init() {
-                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            },
-            playClick() {
-                this.init(); const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
-                osc.type = 'sine'; osc.frequency.setValueAtTime(800, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.3, this.ctx.currentTime); osc.connect(gain); gain.connect(this.ctx.destination);
-                osc.start(); osc.stop(this.ctx.currentTime + 0.1);
-            },
-            playCollect() {
-                this.init(); const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
-                osc.type = 'triangle'; osc.frequency.setValueAtTime(400, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.2);
-                gain.gain.setValueAtTime(0.2, this.ctx.currentTime); osc.connect(gain); gain.connect(this.ctx.destination);
-                osc.start(); osc.stop(this.ctx.currentTime + 0.2);
-            },
-            playGameOver() {
-                this.init(); const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
-                osc.type = 'square'; osc.frequency.setValueAtTime(300, this.ctx.currentTime);
-                osc.frequency.linearRampToValueAtTime(50, this.ctx.currentTime + 0.5);
-                gain.gain.setValueAtTime(0.1, this.ctx.currentTime); osc.connect(gain); gain.connect(this.ctx.destination);
-                osc.start(); osc.stop(this.ctx.currentTime + 0.5);
-            }
+            init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (this.ctx.state === 'suspended') this.ctx.resume(); },
+            playClick() { this.init(); const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.type='sine'; o.frequency.setValueAtTime(800,this.ctx.currentTime); o.frequency.exponentialRampToValueAtTime(100,this.ctx.currentTime+0.1); g.gain.setValueAtTime(0.2,this.ctx.currentTime); o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(this.ctx.currentTime+0.1); },
+            playCollect() { this.init(); const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.type='triangle'; o.frequency.setValueAtTime(400,this.ctx.currentTime); o.frequency.exponentialRampToValueAtTime(1200,this.ctx.currentTime+0.2); g.gain.setValueAtTime(0.15,this.ctx.currentTime); o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(this.ctx.currentTime+0.2); },
+            playGameOver() { this.init(); const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.type='square'; o.frequency.setValueAtTime(300,this.ctx.currentTime); o.frequency.linearRampToValueAtTime(50,this.ctx.currentTime+0.5); g.gain.setValueAtTime(0.08,this.ctx.currentTime); o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(this.ctx.currentTime+0.5); }
         };
 
         // --- 2. 游戏配置 ---
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const timerEl = document.getElementById('time-left');
-        const modal = document.getElementById('over-modal');
+        const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
+        const timerEl = document.getElementById('time-left'), modal = document.getElementById('over-modal');
 
-        const ROWS = 21; const COLS = 31; const CELL = 20;
-        let grid = [];
-        let player, exit, timeLeft, isGameOver, joyX, joyY, timerInterval;
-        let lastMove = 0;
+        const ROWS = 25; const COLS = 21; const CELL = 20;
+        let grid, player, exit, timeLeft, isGameOver, joyX, joyY, timerInterval, lastMove = 0;
 
         function initGame() {
-            grid = [];
-            player = { x: 1, y: 1 };
-            exit = { x: COLS - 2, y: ROWS - 2 };
-            timeLeft = 60;
-            isGameOver = false;
-            joyX = 0; joyY = 0;
-            
-            modal.style.display = 'none';
-            timerEl.innerText = timeLeft;
-            
-            genMaze();
-            startTimer();
-            requestAnimationFrame(loop);
+            grid = []; player = { x: 1, y: 1 }; exit = { x: COLS - 2, y: ROWS - 2 };
+            timeLeft = 60; isGameOver = false; joyX = 0; joyY = 0;
+            modal.style.display = 'none'; timerEl.innerText = timeLeft;
+            genMaze(); startTimer(); requestAnimationFrame(loop);
         }
 
         function genMaze() {
@@ -138,116 +152,75 @@
                     }
                 }
             }
-            walk(1, 1);
-            grid[1][1] = 0; grid[exit.y][exit.x] = 0;
+            walk(1, 1); grid[1][1] = 0; grid[exit.y][exit.x] = 0;
         }
 
         function startTimer() {
             if(timerInterval) clearInterval(timerInterval);
             timerInterval = setInterval(() => {
                 if (isGameOver) return;
-                timeLeft--;
-                timerEl.innerText = timeLeft;
+                timeLeft--; timerEl.innerText = timeLeft;
                 if (timeLeft <= 0) endGame(false);
             }, 1000);
         }
 
         function endGame(win) {
-            isGameOver = true;
-            clearInterval(timerInterval);
+            isGameOver = true; clearInterval(timerInterval);
             modal.style.display = 'flex';
-            const title = document.getElementById('modal-title');
-            const desc = document.getElementById('modal-desc');
-
-            if (win) {
-                CandyAudio.playCollect();
-                title.innerText = "好棒！🍭";
-                title.style.color = "var(--candy-pink)";
-                desc.innerText = "成功找到了糖果礼盒！";
-            } else {
-                CandyAudio.playGameOver();
-                title.innerText = "呜呜...🍩";
-                title.style.color = "#998888";
-                desc.innerText = "能量耗尽，被困在曲奇里了";
-            }
+            const title = document.getElementById('modal-title'), desc = document.getElementById('modal-desc');
+            if (win) { CandyAudio.playCollect(); title.innerText = "好棒！🍭"; desc.innerText = "成功找到了糖果礼盒！"; }
+            else { CandyAudio.playGameOver(); title.innerText = "呜呜...🍩"; desc.innerText = "能量耗尽，被困在曲奇里了"; }
         }
 
-        function restartGame() {
-            CandyAudio.playClick();
-            initGame();
-        }
+        function restartGame() { CandyAudio.playClick(); initGame(); }
 
         // --- 3. 摇杆控制 ---
-        const stick = document.getElementById('joy-stick');
-        const base = document.getElementById('joy-base');
-        let isDragging = false;
-
-        const handleInput = (clientX, clientY) => {
-            CandyAudio.init(); // 激活音频上下文
+        const stick = document.getElementById('joy-stick'), base = document.getElementById('joy-base');
+        let drag = false;
+        const handleInput = (ex, ey) => {
+            CandyAudio.init();
             const rect = base.getBoundingClientRect();
-            let dx = clientX - (rect.left + rect.width / 2);
-            let dy = clientY - (rect.top + rect.height / 2);
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const limit = 50;
-            if (dist > limit) { dx *= limit / dist; dy *= limit / dist; }
+            let dx = ex - (rect.left + rect.width / 2), dy = ey - (rect.top + rect.height / 2);
+            const d = Math.sqrt(dx * dx + dy * dy), m = 50;
+            if (d > m) { dx *= m / d; dy *= m / d; }
             stick.style.transform = `translate(${dx}px, ${dy}px)`;
-            joyX = dx / limit; joyY = dy / limit;
+            joyX = dx / m; joyY = dy / m;
         };
+        base.addEventListener('pointerdown', (e) => { drag = true; handleInput(e.clientX, e.clientY); });
+        window.addEventListener('pointermove', (e) => { if (drag) handleInput(e.clientX, e.clientY); });
+        window.addEventListener('pointerup', () => { drag = false; stick.style.transform = 'translate(0,0)'; joyX = 0; joyY = 0; });
 
-        base.onmousedown = () => isDragging = true;
-        window.onmousemove = (e) => { if (isDragging) handleInput(e.clientX, e.clientY); };
-        window.onmouseup = () => { isDragging = false; stick.style.transform = 'translate(0,0)'; joyX = 0; joyY = 0; };
-        base.ontouchstart = (e) => { isDragging = true; handleInput(e.touches[0].clientX, e.touches[0].clientY); };
-        base.ontouchmove = (e) => { if (isDragging) { e.preventDefault(); handleInput(e.touches[0].clientX, e.touches[0].clientY); } };
-        base.ontouchend = () => { isDragging = false; stick.style.transform = 'translate(0,0)'; joyX = 0; joyY = 0; };
-
-        // --- 4. 循环逻辑 ---
+        // --- 4. 核心循环 ---
         function loop(t) {
             if (isGameOver) return;
             requestAnimationFrame(loop);
+            ctx.fillStyle = "#EBE7E4"; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.fillStyle = "#FFF";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // 画墙
-            ctx.fillStyle = "#D4A373";
+            // 画墙壁 (莫兰迪灰棕)
+            ctx.fillStyle = "#A89A90";
             for (let y = 0; y < ROWS; y++) {
                 for (let x = 0; x < COLS; x++) {
                     if (grid[y][x] === 1) drawRoundedRect(ctx, x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2, 5);
                 }
             }
-
             // 画出口
-            ctx.font = "18px Arial";
-            ctx.fillText("🎁", exit.x * CELL + 1, exit.y * CELL + 17);
+            ctx.font = "18px Arial"; ctx.fillText("🎁", exit.x * CELL + 1, exit.y * CELL + 17);
 
-            // 移动
+            // 移动判定
             if (t - lastMove > 120) {
-                let nextX = player.x, nextY = player.y;
-                if (Math.abs(joyX) > 0.4) nextX += (joyX > 0 ? 1 : -1);
-                else if (Math.abs(joyY) > 0.4) nextY += (joyY > 0 ? 1 : -1);
-
-                if (grid[nextY] && grid[nextY][nextX] === 0) {
-                    player.x = nextX; player.y = nextY; lastMove = t;
-                }
+                let nx = player.x, ny = player.y;
+                if (Math.abs(joyX) > 0.4) nx += (joyX > 0 ? 1 : -1);
+                else if (Math.abs(joyY) > 0.4) ny += (joyY > 0 ? 1 : -1);
+                if (grid[ny] && grid[ny][nx] === 0) { player.x = nx; player.y = ny; lastMove = t; }
             }
-
             // 画玩家
-            ctx.fillStyle = "#D99FA9";
-            ctx.beginPath();
-            ctx.arc(player.x * CELL + CELL/2, player.y * CELL + CELL/2, 8, 0, Math.PI*2);
-            ctx.fill();
+            ctx.fillStyle = "#D99FA9"; ctx.beginPath(); ctx.arc(player.x * CELL + CELL/2, player.y * CELL + CELL/2, 8, 0, Math.PI*2); ctx.fill();
             ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
-
             if (player.x === exit.x && player.y === exit.y) endGame(true);
         }
 
         function drawRoundedRect(ctx, x, y, w, h, r) {
-            ctx.beginPath(); ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y);
-            ctx.quadraticCurveTo(x+w, y, x+w, y+r); ctx.lineTo(x+w, y+h-r);
-            ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h); ctx.lineTo(x+r, y+h);
-            ctx.quadraticCurveTo(x, y+h, x, y+h-r); ctx.lineTo(x, y+r);
-            ctx.quadraticCurveTo(x, y, x+r, y); ctx.closePath(); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r); ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h); ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r); ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y); ctx.closePath(); ctx.fill();
         }
 
         initGame();

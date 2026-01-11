@@ -2,79 +2,91 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>桃桃游戏厅 // Peach Arcade</title>
     <link rel="stylesheet" href="style.css">
     <style>
+        /* --- 全局容器：适应移动端高度 --- */
         #home { 
             display: flex; 
             flex-direction: column; 
             align-items: center; 
             justify-content: center; 
-            height: 100vh; 
+            min-height: 100dvh; /* 动态适配手机浏览器高度 */
+            padding: 20px;
         }
 
-        /* --- Logo 部分保持高级感 --- */
+        /* --- Logo 部分：缩小比例以适应竖屏 --- */
         .logo-wrapper {
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 50px;
-            padding: 15px 40px;
+            margin-bottom: 40px;
+            padding: 12px 30px;
             background: rgba(255, 255, 255, 0.4);
             border-radius: 100px;
             border: 2px solid rgba(255, 255, 255, 0.8);
-            box-shadow: 0 10px 30px rgba(217, 159, 169, 0.15);
+            box-shadow: 0 10px 30px rgba(217, 159, 169, 0.12);
             animation: float 4s infinite ease-in-out;
+            width: fit-content;
         }
+        
         .peach-logo {
-            font-size: 3.2rem;
-            margin-right: 15px;
+            font-size: 2.8rem; /* 移动端稍作缩小 */
+            margin-right: 12px;
             animation: peach-bounce 2s infinite ease-in-out;
-            filter: drop-shadow(0 5px 10px rgba(217, 159, 169, 0.3));
-        }
-        .logo-text h1 {
-            margin: 0; font-size: 2.2rem; font-weight: 900;
-            background: linear-gradient(135deg, var(--candy-pink) 0%, #B88A92 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            letter-spacing: 6px;
+            filter: drop-shadow(0 5px 8px rgba(217, 159, 169, 0.3));
         }
 
-        /* --- 核心：卡片展示区 --- */
+        .logo-text h1 {
+            margin: 0; 
+            font-size: 1.8rem; /* 移动端标题字号优化 */
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--candy-pink) 0%, #B88A92 100%);
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 4px; /* 略微收窄间距 */
+        }
+
+        /* --- 核心：卡片展示区竖屏自适应 --- */
         .menu-grid { 
             display: grid; 
-            grid-template-columns: repeat(2, 210px); 
-            gap: 30px; 
+            /* 使用 fr 单位实现自动伸缩，gap 缩小防止溢出 */
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 15px; 
+            width: 100%;
+            max-width: 380px; /* 限制手机上的最大宽度 */
         }
 
         .game-card {
             background: var(--bg-card);
-            border: 6px solid #FFF; 
-            padding: 30px 20px; 
+            border: 5px solid #FFF; 
+            padding: 20px 10px; 
             text-align: center; 
             cursor: pointer; 
             text-decoration: none; 
             color: var(--text-dark); 
-            border-radius: 45px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.04);
+            border-radius: 35px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
             display: block;
             position: relative;
-            overflow: hidden; /* 必须溢出隐藏以承载光泽动画 */
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            touch-action: manipulation;
         }
 
-        /* 动画1：呼吸浮动（通过 nth-child 让每张卡片错开频率） */
+        /* 呼吸浮动动画：错开频率 */
         .game-card { animation: card-float 4s infinite ease-in-out; }
-        .game-card:nth-child(2) { animation-delay: -1s; }
-        .game-card:nth-child(3) { animation-delay: -2.5s; }
-        .game-card:nth-child(4) { animation-delay: -1.5s; }
+        .game-card:nth-child(2) { animation-delay: -0.8s; }
+        .game-card:nth-child(3) { animation-delay: -2.2s; }
+        .game-card:nth-child(4) { animation-delay: -1.2s; }
 
         @keyframes card-float {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-12px); }
+            50% { transform: translateY(-8px); }
         }
 
-        /* 动画2：流光溢彩（糖果质感高光） */
+        /* 流光扫光效果 */
         .game-card::before {
             content: '';
             position: absolute;
@@ -91,56 +103,54 @@
         }
 
         .game-card:hover::before {
-            left: 150%;
-            top: 150%;
+            left: 150%; top: 150%;
             transition: 0.8s ease-in-out;
         }
 
-        /* 动画3：图标（Emoji）独立动画 */
         .game-card i { 
             display: block; 
-            font-size: 3.5rem; 
-            margin-bottom: 15px; 
+            font-size: 2.8rem; /* 调整图标大小 */
+            margin-bottom: 10px; 
             font-style: normal; 
             transition: transform 0.4s ease;
-            filter: drop-shadow(0 5px 8px rgba(0,0,0,0.05));
-        }
-
-        /* 悬停状态综合增强 */
-        .game-card:hover { 
-            transform: scale(1.1) translateY(-15px); /* 悬停时停止浮动动画的位移，改为主动升起 */
-            box-shadow: 0 25px 45px rgba(217, 159, 169, 0.25);
-            border-color: var(--candy-mint);
-            animation-play-state: paused; /* 悬停时停止呼吸动画，方便点击 */
-        }
-
-        .game-card:hover i {
-            transform: rotate(10deg) scale(1.2);
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.05));
         }
 
         .game-card span {
             font-weight: 800;
-            font-size: 1.2rem;
-            letter-spacing: 2px;
+            font-size: 1rem;
+            letter-spacing: 1px;
             display: block;
-            color: var(--text-dark);
             opacity: 0.85;
         }
 
-        /* 点击瞬间反馈 */
+        /* 手机端点击反馈优化 */
+        .game-card:hover { 
+            transform: scale(1.05) translateY(-5px);
+            box-shadow: 0 15px 30px rgba(217, 159, 169, 0.2);
+            border-color: var(--candy-mint);
+        }
+
         .game-card:active {
             transform: scale(0.92);
             transition: 0.1s;
         }
 
-        /* --- 通用动画定义 --- */
+        /* --- 动画关键帧 --- */
         @keyframes float {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+            50% { transform: translateY(-8px); }
         }
         @keyframes peach-bounce {
-            0%, 100% { transform: scale(1) rotate(0deg); }
-            50% { transform: scale(1.1) rotate(8deg); }
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08) rotate(5deg); }
+        }
+
+        /* 针对超窄屏幕（如老款机型）的小微调 */
+        @media (max-width: 340px) {
+            .logo-text h1 { font-size: 1.5rem; letter-spacing: 2px; }
+            .menu-grid { gap: 10px; }
+            .game-card i { font-size: 2.2rem; }
         }
     </style>
 </head>
@@ -148,16 +158,16 @@
     <div class="candy-bg"></div>
 
     <div id="home">
-        <!-- Logo -->
+        <!-- 精致 Logo -->
         <div class="logo-wrapper">
             <div class="peach-logo">🍑</div>
             <div class="logo-text">
                 <h1>桃桃游戏厅</h1>
-                <span style="color:var(--candy-mint); letter-spacing:4px; font-size:0.8rem; font-weight:bold; text-transform:uppercase;">Sweet Peach Arcade</span>
+                <span style="color:var(--candy-mint); letter-spacing:3px; font-size:0.7rem; font-weight:bold; text-transform:uppercase; display:block; margin-top:-2px;">Sweet Peach Arcade</span>
             </div>
         </div>
         
-        <!-- 卡片入口 -->
+        <!-- 卡片入口网格 -->
         <div class="menu-grid">
             <a href="snake.html" class="game-card">
                 <i>🐍</i>
@@ -179,6 +189,7 @@
     </div>
 
     <script>
+        // --- 核心音效引擎 ---
         const CandyAudio = {
             ctx: null,
             init() {
@@ -194,22 +205,18 @@
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(900, this.ctx.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
                 osc.connect(gain); gain.connect(this.ctx.destination);
                 osc.start(); osc.stop(this.ctx.currentTime + 0.1);
             }
         };
 
+        // 统一处理点击与音效
         document.querySelectorAll('.game-card').forEach(card => {
             card.addEventListener('click', function(e) {
                 e.preventDefault(); 
                 const targetUrl = this.getAttribute('href');
                 CandyAudio.playClick();
-                
-                // 点击时的果冻挤压感
-                this.style.transform = "scale(0.9) translateY(0)";
-                
                 setTimeout(() => { window.location.href = targetUrl; }, 160); 
             });
         });
