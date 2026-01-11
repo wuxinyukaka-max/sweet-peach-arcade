@@ -62,17 +62,72 @@
     </div>
 
     <script>
-        // --- 1. 糖果音效引擎 ---
+        // --- 1. 糖果音效引擎 (莫兰迪 Q 弹版 - 适配果冻方块) ---
         const CandyAudio = {
             ctx: null,
-            init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (this.ctx.state === 'suspended') this.ctx.resume(); },
+            init() { 
+                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); 
+                if (this.ctx.state === 'suspended') this.ctx.resume(); 
+            },
             play(type) {
-                this.init(); const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.connect(g); g.connect(this.ctx.destination);
+                this.init();
                 const n = this.ctx.currentTime;
-                if(type==='click'){ o.frequency.setValueAtTime(800,n); o.frequency.exponentialRampToValueAtTime(100,n+0.1); g.gain.setValueAtTime(0.15,n); }
-                if(type==='ding'){ o.type='triangle'; o.frequency.setValueAtTime(400,n); o.frequency.exponentialRampToValueAtTime(1200,n+0.2); g.gain.setValueAtTime(0.1,n); }
-                if(type==='sad'){ o.type='square'; o.frequency.setValueAtTime(200,n); o.frequency.linearRampToValueAtTime(50,n+0.5); g.gain.setValueAtTime(0.08,n); }
-                o.start(); o.stop(n + 0.5);
+
+                // 创建核心音频节点
+                const o = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
+                const f = this.ctx.createBiquadFilter();
+
+                // 低通滤波器：切掉刺耳高频，让声音温润、有肉感
+                f.type = 'lowpass';
+                f.Q.value = 5; 
+
+                o.connect(f);
+                f.connect(g);
+                g.connect(this.ctx.destination);
+
+                if (type === 'click') {
+                    // --- 移动/旋转：极短的“啵”一声 (像气泡破裂) ---
+                    // 为了防止频繁点击太吵，我们将这个声音设得极短且柔和
+                    o.type = 'sine';
+                    f.frequency.setValueAtTime(1200, n);
+                    o.frequency.setValueAtTime(1000, n);
+                    o.frequency.exponentialRampToValueAtTime(200, n + 0.05);
+                    
+                    g.gain.setValueAtTime(0.1, n); // 音量较小
+                    g.gain.exponentialRampToValueAtTime(0.01, n + 0.05);
+                    
+                    o.start(n);
+                    o.stop(n + 0.05);
+                } 
+                else if (type === 'ding') {
+                    // --- 消除行：清脆透亮的“叮灵~” (像硬糖掉进罐子) ---
+                    o.type = 'sine';
+                    f.frequency.setValueAtTime(3000, n);
+                    o.frequency.setValueAtTime(600, n);
+                    o.frequency.exponentialRampToValueAtTime(1800, n + 0.12);
+                    
+                    g.gain.setValueAtTime(0, n);
+                    g.gain.linearRampToValueAtTime(0.2, n + 0.01);
+                    g.gain.exponentialRampToValueAtTime(0.01, n + 0.3);
+                    
+                    o.start(n);
+                    o.stop(n + 0.3);
+                }
+                else if (type === 'sad') {
+                    // --- 游戏结束：软糯委屈的“唔...” (像果冻被踩扁) ---
+                    o.type = 'triangle';
+                    f.frequency.setValueAtTime(400, n); // 极低滤波，声音很闷
+                    
+                    o.frequency.setValueAtTime(200, n);
+                    o.frequency.linearRampToValueAtTime(50, n + 0.5);
+                    
+                    g.gain.setValueAtTime(0.2, n);
+                    g.gain.linearRampToValueAtTime(0, n + 0.5);
+                    
+                    o.start(n);
+                    o.stop(n + 0.5);
+                }
             }
         };
 

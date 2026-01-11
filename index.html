@@ -189,35 +189,69 @@
     </div>
 
     <script>
-        // --- 核心音效引擎 ---
+        // --- 核心音效引擎 (莫兰迪 Q 弹版) ---
         const CandyAudio = {
             ctx: null,
             init() {
                 if (!this.ctx) {
                     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
                 }
+                // 自动恢复音频上下文（适配手机端点击激活）
                 if (this.ctx.state === 'suspended') this.ctx.resume();
             },
+            // 按钮点击声：极致柔和的“啵” (模拟气泡或软糖)
             playClick() {
                 this.init();
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(900, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
-                osc.connect(gain); gain.connect(this.ctx.destination);
-                osc.start(); osc.stop(this.ctx.currentTime + 0.1);
+                const n = this.ctx.currentTime;
+                
+                // 创建音频节点
+                const o = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
+                const f = this.ctx.createBiquadFilter();
+
+                // 配置振荡器：使用正弦波 (Sine) 最圆润
+                o.type = 'sine';
+                // 频率从1200Hz极速下降到300Hz，产生“捏捏乐”般的下潜感
+                o.frequency.setValueAtTime(1200, n);
+                o.frequency.exponentialRampToValueAtTime(300, n + 0.1);
+
+                // 配置滤波器：切掉刺耳高频，让声音变“肉”
+                f.type = 'lowpass';
+                f.frequency.setValueAtTime(1500, n);
+                f.Q.value = 2;
+
+                // 配置音量：极短的爆发和淡出
+                g.gain.setValueAtTime(0, n);
+                g.gain.linearRampToValueAtTime(0.3, n + 0.01);
+                g.gain.exponentialRampToValueAtTime(0.01, n + 0.1);
+
+                // 连接节点：振荡器 -> 滤波器 -> 音量 -> 扬声器
+                o.connect(f);
+                f.connect(g);
+                g.connect(this.ctx.destination);
+
+                o.start(n);
+                o.stop(n + 0.12);
             }
         };
 
-        // 统一处理点击与音效
+        // 统一处理点击与音效交互
         document.querySelectorAll('.game-card').forEach(card => {
             card.addEventListener('click', function(e) {
+                // 阻止默认跳转，播完声音再走
                 e.preventDefault(); 
                 const targetUrl = this.getAttribute('href');
+                
+                // 1. 播放 Q 弹音效
                 CandyAudio.playClick();
-                setTimeout(() => { window.location.href = targetUrl; }, 160); 
+                
+                // 2. 增加视觉上的果冻挤压反馈 (scale 0.95)
+                this.style.transform = "scale(0.95) translateY(0)";
+                
+                // 3. 延迟跳转，确保玩家能听完完整的“啵”声
+                setTimeout(() => {
+                    window.location.href = targetUrl;
+                }, 150); 
             });
         });
     </script>

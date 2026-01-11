@@ -58,17 +58,77 @@
     </div>
 
     <script>
+        // --- 1. 糖果音效引擎 (莫兰迪Q弹版 - 适配迷宫) ---
         const CandyAudio = {
             ctx: null,
-            init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (this.ctx.state === 'suspended') this.ctx.resume(); },
+            init() { 
+                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); 
+                if (this.ctx.state === 'suspended') this.ctx.resume(); 
+            },
             play(type) {
-                this.init(); const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.connect(g); g.connect(this.ctx.destination);
+                this.init();
                 const n = this.ctx.currentTime;
-                if(type==='click'){ o.frequency.setValueAtTime(800,n); o.frequency.exponentialRampToValueAtTime(100,n+0.1); g.gain.setValueAtTime(0.12,n); }
-                if(type==='ding'){ o.type='triangle'; o.frequency.setValueAtTime(400,n); o.frequency.exponentialRampToValueAtTime(1500,n+0.2); g.gain.setValueAtTime(0.15,n); }
-                if(type==='bark'){ o.type='square'; o.frequency.setValueAtTime(120,n); o.frequency.linearRampToValueAtTime(250,n+0.1); g.gain.setValueAtTime(0.2,n); }
-                if(type==='sad'){ o.type='square'; o.frequency.setValueAtTime(200,n); o.frequency.linearRampToValueAtTime(50,n+0.5); g.gain.setValueAtTime(0.08,n); }
-                o.start(); o.stop(n + 0.5);
+
+                // 1. 频繁移动的按键音：保持静音，避免吵闹
+                if (type === 'click') return; 
+
+                // 创建核心节点
+                const o = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
+                const f = this.ctx.createBiquadFilter();
+
+                // 滤波器设置：切掉刺耳高频，增加柔和度
+                f.type = 'lowpass';
+                f.Q.value = 4; // 适度的共鸣感
+
+                o.connect(f);
+                f.connect(g);
+                g.connect(this.ctx.destination);
+
+                if (type === 'ding') {
+                    // --- 成功脱出：像打开香槟一样的“啾啪！” ---
+                    o.type = 'sine';
+                    f.frequency.setValueAtTime(2000, n);
+                    o.frequency.setValueAtTime(500, n);
+                    o.frequency.exponentialRampToValueAtTime(1600, n + 0.15);
+                    
+                    g.gain.setValueAtTime(0, n);
+                    g.gain.linearRampToValueAtTime(0.2, n + 0.01);
+                    g.gain.exponentialRampToValueAtTime(0.01, n + 0.3);
+                    
+                    o.start(n);
+                    o.stop(n + 0.3);
+                } 
+                else if (type === 'bark') {
+                    // --- 被狗咬：沉闷的物理碰撞感“噗唔！” ---
+                    o.type = 'triangle';
+                    f.frequency.setValueAtTime(400, n); // 极低滤波，声音很厚实
+                    
+                    o.frequency.setValueAtTime(150, n);
+                    o.frequency.linearRampToValueAtTime(250, n + 0.05);
+                    o.frequency.linearRampToValueAtTime(100, n + 0.15);
+                    
+                    g.gain.setValueAtTime(0, n);
+                    g.gain.linearRampToValueAtTime(0.2, n + 0.01);
+                    g.gain.linearRampToValueAtTime(0, n + 0.15);
+                    
+                    o.start(n);
+                    o.stop(n + 0.15);
+                }
+                else if (type === 'sad') {
+                    // --- 失败：软糯的下沉音“呜~” ---
+                    o.type = 'triangle';
+                    f.frequency.setValueAtTime(350, n);
+                    
+                    o.frequency.setValueAtTime(220, n);
+                    o.frequency.exponentialRampToValueAtTime(60, n + 0.5);
+                    
+                    g.gain.setValueAtTime(0.2, n);
+                    g.gain.linearRampToValueAtTime(0, n + 0.5);
+                    
+                    o.start(n);
+                    o.stop(n + 0.5);
+                }
             }
         };
 

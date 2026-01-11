@@ -64,17 +64,62 @@
     </div>
 
     <script>
-        // --- 1. 糖果音效引擎 ---
+        // --- 1. 糖果音效引擎 (Q弹莫兰迪版 - 已去电子味) ---
         const CandyAudio = {
             ctx: null,
-            init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (this.ctx.state === 'suspended') this.ctx.resume(); },
+            init() { 
+                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); 
+                if (this.ctx.state === 'suspended') this.ctx.resume(); 
+            },
             play(type) {
-                this.init(); const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.connect(g); g.connect(this.ctx.destination);
+                this.init();
                 const n = this.ctx.currentTime;
-                if(type==='click'){ o.frequency.setValueAtTime(800,n); o.frequency.exponentialRampToValueAtTime(100,n+0.1); g.gain.setValueAtTime(0.15,n); }
-                if(type==='ding'){ o.type='triangle'; o.frequency.setValueAtTime(500,n); o.frequency.exponentialRampToValueAtTime(1500,n+0.2); g.gain.setValueAtTime(0.1,n); }
-                if(type==='sad'){ o.type='square'; o.frequency.setValueAtTime(200,n); o.frequency.linearRampToValueAtTime(50,n+0.5); g.gain.setValueAtTime(0.08,n); }
-                o.start(); o.stop(n + 0.5);
+                
+                // 1. 按钮点击：应要求彻底静音
+                if (type === 'click') return; 
+
+                // 2. 创建核心组件：振荡器、增益器、低通滤波器(去电子味的关键)
+                const o = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
+                const f = this.ctx.createBiquadFilter();
+
+                // 滤波器设置：切掉刺耳的高频，让声音变温润、肉感
+                f.type = 'lowpass';
+                f.Q.value = 5; // 增加一点Q值，让声音有“啵啵”的空气感
+
+                o.connect(f);
+                f.connect(g);
+                g.connect(this.ctx.destination);
+
+                if (type === 'ding') { 
+                    // --- 吃到糖果：Q弹的“啾叮”声 ---
+                    o.type = 'sine'; // 正弦波最圆润
+                    f.frequency.setValueAtTime(2000, n);
+                    // 频率快速上行：模拟果冻弹回
+                    o.frequency.setValueAtTime(600, n);
+                    o.frequency.exponentialRampToValueAtTime(1600, n + 0.12);
+                    
+                    g.gain.setValueAtTime(0, n);
+                    g.gain.linearRampToValueAtTime(0.2, n + 0.01);
+                    g.gain.exponentialRampToValueAtTime(0.01, n + 0.3);
+                    
+                    o.start(n);
+                    o.stop(n + 0.3);
+                } 
+                else if (type === 'sad') { 
+                    // --- 撞墙：闷声闷气的“噗~” ---
+                    o.type = 'triangle'; // 三角波比方波软很多
+                    f.frequency.setValueAtTime(500, n); // 极低的滤波，声音非常闷
+                    
+                    o.frequency.setValueAtTime(250, n);
+                    o.frequency.exponentialRampToValueAtTime(60, n + 0.4);
+                    
+                    g.gain.setValueAtTime(0.2, n);
+                    g.gain.linearRampToValueAtTime(0, n + 0.4);
+                    
+                    o.start(n);
+                    o.stop(n + 0.4);
+                }
             }
         };
 
