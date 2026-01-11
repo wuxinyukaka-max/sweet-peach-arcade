@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>SWEET_MAZE // 莫兰迪一排式控制版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>SWEET_MAZE // 随机逃离版</title>
     <link rel="stylesheet" href="style.css">
     <style>
         body, html {
@@ -12,28 +12,23 @@
             background-color: var(--bg-main); overflow: hidden;
             touch-action: none;
         }
-
         #game-container {
             position: relative;
             display: flex; align-items: center; justify-content: center;
             width: 100%; height: 100%;
         }
-
         canvas {
             background: #EBE7E4;
             border: 6px solid white;
             border-radius: 40px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
             max-width: 95vw;
-            max-height: 94vh;
+            max-height: 92vh;
             width: auto; height: auto;
             display: block;
         }
-
-        /* 隐藏旧组件 */
-        #hud, .controls, .button-panel { display: none !important; }
+        #hud, .controls { display: none !important; }
         .back-home { position: absolute; top: 20px; left: 20px; z-index: 1000; font-weight: bold; }
-
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(107, 94, 94, 0.3);
@@ -41,7 +36,7 @@
             z-index: 2000; backdrop-filter: blur(10px);
         }
         .modal-content {
-            background: white; width: 80%; max-width: 300px; padding: 30px;
+            background: white; width: 80%; max-width: 300px; padding: 35px;
             border-radius: 40px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.1);
         }
     </style>
@@ -51,15 +46,14 @@
     <a href="index.html" class="back-home" id="back-link">🏠 返回</a>
 
     <div id="game-container">
-        <!-- 400x800 一体化比例 -->
         <canvas id="gameCanvas" width="400" height="800"></canvas>
     </div>
 
     <div id="over-modal" class="modal-overlay">
         <div class="modal-content">
-            <h2 id="modal-title" style="color: var(--candy-pink); margin-bottom: 5px; font-size: 1.5rem;">能量耗尽 🍩</h2>
-            <p id="modal-desc" style="color: #998888; font-size: 0.9rem; margin-bottom: 25px;">迷宫太复杂了...</p>
-            <button class="cute-btn wide" onclick="handleReset()" style="width: 100%; height: 50px; border-radius: 25px; font-size: 1rem;">重置能量</button>
+            <h2 id="modal-title" style="color: var(--candy-pink); margin: 0; font-size: 1.6rem;">时间耗尽 🍩</h2>
+            <p id="modal-desc" style="color: #998888; font-size: 0.95rem; margin: 15px 0 25px;">被困在迷雾里了...</p>
+            <button class="cute-btn wide" onclick="handleReset()" style="width: 100%; height: 50px; border-radius: 25px; font-size: 1rem;">重置时间</button>
         </div>
     </div>
 
@@ -72,38 +66,35 @@
                 this.init(); const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.connect(g); g.connect(this.ctx.destination);
                 const n = this.ctx.currentTime;
                 if(type==='click'){ o.frequency.setValueAtTime(800,n); o.frequency.exponentialRampToValueAtTime(100,n+0.1); g.gain.setValueAtTime(0.12,n); }
-                if(type==='ding'){ o.type='triangle'; o.frequency.setValueAtTime(400,n); o.frequency.exponentialRampToValueAtTime(1200,n+0.2); g.gain.setValueAtTime(0.1,n); }
+                if(type==='ding'){ o.type='triangle'; o.frequency.setValueAtTime(400,n); o.frequency.exponentialRampToValueAtTime(1500,n+0.2); g.gain.setValueAtTime(0.15,n); }
+                if(type==='bark'){ o.type='square'; o.frequency.setValueAtTime(120,n); o.frequency.linearRampToValueAtTime(250,n+0.1); g.gain.setValueAtTime(0.2,n); }
                 if(type==='sad'){ o.type='square'; o.frequency.setValueAtTime(200,n); o.frequency.linearRampToValueAtTime(50,n+0.5); g.gain.setValueAtTime(0.08,n); }
                 o.start(); o.stop(n + 0.5);
             }
         };
 
-        // --- 2. 核心配置：最大化迷宫区域 ---
+        const iconAssets = {
+            left: new Image(), right: new Image(), up: new Image(), down: new Image()
+        };
+        iconAssets.left.src = 'icons/left.svg'; iconAssets.right.src = 'icons/right.svg';
+        iconAssets.up.src = 'icons/up.svg'; iconAssets.down.src = 'icons/down.svg';
+
+        // --- 2. 配置 ---
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const modal = document.getElementById('over-modal');
 
-        const COLS = 31; 
-        const ROWS = 51; // 极大化迷宫高度
-        const CELL = 12; 
-        const GAME_X_OFFSET = 14; 
-        const GAME_Y_OFFSET = 80; // 顶部计时器下方即开始
+        const CELL = 16, COLS = 23, ROWS = 37; 
+        const GAME_X_OFFSET = (400 - COLS * CELL) / 2; 
+        const GAME_Y_OFFSET = 90; 
 
-        let grid, player, exit, timeLeft, isGameOver, timerInterval;
-        let activeMoveDir = null; 
-        let lastMoveTimestamp = 0;
-        const MOVE_INTERVAL = 80; // 进一步加快连续移动速度
-
-        // 一排式按钮定义：按顺序 左、右、上、下
-        const uiBtns = {
-            L: { x: 30,  y: 710, w: 100, h: 70, icon: '←', move: {x: -1, y: 0}, color: '#9BB7AD' },
-            R: { x: 270, y: 710, w: 100, h: 70, icon: '→', move: {x: 1, y: 0}, color: '#9BB7AD' },
-            U: { x: 140, y: 700, w: 120, h: 40, icon: '↑', move: {x: 0, y: -1}, color: '#D99FA9' },
-            D: { x: 140, y: 750, w: 120, h: 40, icon: '↓', move: {x: 0, y: 1}, color: '#D99FA9' }
-        };
+        let grid, player, exit, timeLeft, isGameOver, timerInterval, dogs;
+        let activeMoveDir = null, lastMoveTimestamp = 0, messageTip = { text: "", timer: 0 };
+        const MOVE_INTERVAL = 95;
 
         function init() {
-            grid = []; player = { x: 1, y: 1 }; exit = { x: COLS - 2, y: ROWS - 2 };
-            timeLeft = 60; isGameOver = false; activeMoveDir = null;
+            grid = []; player = { x: 1, y: 1 }; exit = { x: 1, y: 1 }; 
+            timeLeft = 60; isGameOver = false; activeMoveDir = null; dogs = [];
+            messageTip = { text: "", timer: 0 };
             modal.style.display = 'none';
             genMaze();
             startTimer();
@@ -123,26 +114,53 @@
                 }
             }
             walk(1, 1);
-            grid[ROWS-2][COLS-2] = 0;
+
+            // --- 核心修改：随机寻找出口点 ---
+            let potentialExits = [];
+            for (let y = 1; y < ROWS - 1; y++) {
+                for (let x = 1; x < COLS - 1; x++) {
+                    if (grid[y][x] === 0) {
+                        // 确保出口离起点 (1,1) 有足够的曼哈顿距离 (至少占总长的一半)
+                        let dist = Math.abs(x - 1) + Math.abs(y - 1);
+                        if (dist > (COLS + ROWS) / 1.5) {
+                            potentialExits.push({x, y});
+                        }
+                    }
+                }
+            }
+            // 从符合条件的路径点中随机挑一个
+            if (potentialExits.length > 0) {
+                exit = potentialExits[Math.floor(Math.random() * potentialExits.length)];
+            } else {
+                exit = { x: COLS - 2, y: ROWS - 2 }; // 保底方案
+            }
+
+            // 随机生成狗
+            for(let i=0; i<12; i++) {
+                let rx = Math.floor(Math.random()*COLS), ry = Math.floor(Math.random()*ROWS);
+                if(grid[ry][rx] === 0 && (Math.abs(rx-player.x) > 3) && (rx!==exit.x||ry!==exit.y)) dogs.push({x: rx, y: ry});
+            }
         }
 
         function startTimer() {
             if(timerInterval) clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                if (isGameOver) return;
-                timeLeft--;
-                if (timeLeft <= 0) endGame(false);
-                draw();
-            }, 1000);
+            timerInterval = setInterval(() => { if (!isGameOver) { timeLeft--; if (timeLeft <= 0) endGame(false); } }, 1000);
         }
 
+        // --- 3. 交互 ---
         function getTouchPos(e) {
             const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
+            const scaleX = canvas.width / rect.width, scaleY = canvas.height / rect.height;
             const t = e.touches ? e.touches[0] : e;
             return { x: (t.clientX - rect.left) * scaleX, y: (t.clientY - rect.top) * scaleY };
         }
+
+        const uiBtns = {
+            L: { x: 55,  y: 710, w: 80, h: 70, img: iconAssets.left,  move: {x: -1, y: 0}, color: '#9BB7AD' },
+            R: { x: 265, y: 710, w: 80, h: 70, img: iconAssets.right, move: {x: 1, y: 0},  color: '#9BB7AD' },
+            U: { x: 160, y: 705, w: 80, h: 40, img: iconAssets.up,    move: {x: 0, y: -1}, color: '#D99FA9' },
+            D: { x: 160, y: 750, w: 80, h: 40, img: iconAssets.down,  move: {x: 0, y: 1},  color: '#9BB7AD' }
+        };
 
         canvas.addEventListener('pointerdown', (e) => {
             e.preventDefault(); CandyAudio.init();
@@ -151,97 +169,129 @@
             for (let k in uiBtns) {
                 let btn = uiBtns[k];
                 if (pos.x > btn.x && pos.x < btn.x + btn.w && pos.y > btn.y && pos.y < btn.y + btn.h) {
-                    btn.active = true;
-                    activeMoveDir = btn.move;
-                    CandyAudio.play('click');
+                    btn.active = true; activeMoveDir = btn.move; CandyAudio.play('click');
                 }
             }
         });
+        window.addEventListener('pointerup', () => { for (let k in uiBtns) uiBtns[k].active = false; activeMoveDir = null; });
 
-        const stopMove = () => { for (let k in uiBtns) uiBtns[k].active = false; activeMoveDir = null; };
-        window.addEventListener('pointerup', stopMove);
-        window.addEventListener('pointercancel', stopMove);
-
-        function loop(timestamp) {
+        // --- 4. 循环 ---
+        function loop(t) {
             if (isGameOver) return;
-            if (activeMoveDir) {
-                if (timestamp - lastMoveTimestamp > MOVE_INTERVAL) {
-                    let nx = player.x + activeMoveDir.x, ny = player.y + activeMoveDir.y;
-                    if (grid[ny] && grid[ny][nx] === 0) {
-                        player.x = nx; player.y = ny;
-                        if (player.x === exit.x && player.y === exit.y) endGame(true);
-                    }
-                    lastMoveTimestamp = timestamp;
+            if (activeMoveDir && t - lastMoveTimestamp > MOVE_INTERVAL) {
+                let nx = player.x + activeMoveDir.x, ny = player.y + activeMoveDir.y;
+                if (grid[ny] && grid[ny][nx] === 0) {
+                    player.x = nx; player.y = ny;
+                    checkDogs();
+                    if (player.x === exit.x && player.y === exit.y) endGame(true);
                 }
+                lastMoveTimestamp = t;
             }
             draw();
             requestAnimationFrame(loop);
         }
 
+        function checkDogs() {
+            dogs.forEach((dog, index) => {
+                if (dog.x === player.x && dog.y === player.y) {
+                    timeLeft = Math.max(0, timeLeft - 5);
+                    // --- 提示词优化：更大更红 ---
+                    messageTip = { text: "被狗咬啦！时间-5s 🐕", timer: 80 };
+                    dogs.splice(index, 1); CandyAudio.play('bark');
+                }
+            });
+        }
+
+        // --- 5. 绘图 ---
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const charX = GAME_X_OFFSET + player.x * CELL + CELL/2, charY = GAME_Y_OFFSET + player.y * CELL + CELL/2;
 
-            // 1. 顶部 HUD
-            ctx.fillStyle = "rgba(255,255,255,0.9)";
-            drawRoundedRect(ctx, 110, 20, 180, 40, 20);
-            ctx.fillStyle = timeLeft < 10 ? "#FF85A1" : "#9BB7AD";
-            ctx.font = "bold 18px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.fillText(`ENERGY: ${timeLeft}s`, 200, 40);
-
-            // 2. 迷宫绘制区 (紧凑填充)
-            ctx.fillStyle = "rgba(255,255,255,0.4)";
-            drawRoundedRect(ctx, GAME_X_OFFSET-4, GAME_Y_OFFSET-4, (COLS*CELL)+8, (ROWS*CELL)+8, 12);
-            
+            // A. 背景迷宫
             ctx.fillStyle = "#A89A90";
             for (let y = 0; y < ROWS; y++) {
                 for (let x = 0; x < COLS; x++) {
-                    if (grid[y][x] === 1) drawRoundedRect(ctx, GAME_X_OFFSET + x * CELL + 1, GAME_Y_OFFSET + y * CELL + 1, CELL - 2, CELL - 2, 3);
+                    if (grid[y][x] === 1) drawRoundedRect(ctx, GAME_X_OFFSET + x * CELL + 1, GAME_Y_OFFSET + y * CELL + 1, CELL - 2, CELL - 2, 4);
                 }
             }
+            
+            // B. 出口
+            drawExitPortal(ctx, GAME_X_OFFSET + exit.x * CELL + CELL/2, GAME_Y_OFFSET + exit.y * CELL + CELL/2);
 
-            // 3. 出口
+            // C. 狗
             ctx.font = "12px Arial";
-            ctx.fillText("🎁", GAME_X_OFFSET + exit.x * CELL + 6, GAME_Y_OFFSET + exit.y * CELL + 6);
+            dogs.forEach(dog => ctx.fillText("🐕", GAME_X_OFFSET + dog.x * CELL + CELL/2, GAME_Y_OFFSET + dog.y * CELL + CELL/2));
 
-            // 4. 玩家珍珠
-            ctx.fillStyle = "#D99FA9";
-            ctx.beginPath();
-            ctx.arc(GAME_X_OFFSET + player.x * CELL + 6, GAME_Y_OFFSET + player.y * CELL + 6, 4.5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = "white"; ctx.lineWidth = 1; ctx.stroke();
+            // D. 玩家
+            ctx.save(); ctx.translate(charX, charY);
+            const breathe = Math.sin(Date.now() / 200) * 0.05; ctx.scale(1 + breathe, 1 - breathe);
+            ctx.fillStyle = "#615e6c"; drawRoundedRect(ctx, -5, 0, 10, 6, 4); 
+            ctx.beginPath(); ctx.arc(0, -4, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "#A89A90"; ctx.beginPath(); ctx.arc(-2.5, -4.5, 1.2, 0, 7); ctx.arc(2.5, -4.5, 1.2, 0, 7); ctx.fill();
+            ctx.restore();
 
-            // 5. 底部一排式按钮
-            ctx.textBaseline = "alphabetic";
-            for (let k in uiBtns) {
-                let btn = uiBtns[k];
-                ctx.save();
-                ctx.fillStyle = btn.active ? "rgba(217, 159, 169, 0.9)" : "rgba(255,255,255,0.7)";
-                ctx.strokeStyle = "white";
-                ctx.lineWidth = 4;
-                drawRoundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 18);
-                ctx.stroke();
-                ctx.fillStyle = btn.active ? "white" : btn.color;
-                ctx.font = "bold 32px Arial";
+            // E. 烟雾迷雾
+            const viewRadius = Math.max(40, 80 - (60 - timeLeft));
+            const gradient = ctx.createRadialGradient(charX, charY, viewRadius * 0.3, charX, charY, viewRadius);
+            gradient.addColorStop(0, "rgba(235, 231, 228, 0)");
+            gradient.addColorStop(0.6, "rgba(235, 231, 228, 0.4)");
+            gradient.addColorStop(1, "rgba(235, 231, 228, 0.98)");
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, GAME_Y_OFFSET - 10, 400, ROWS * CELL + 20);
+
+            // F. 飘字提示优化
+            if (messageTip.timer > 0) {
+                ctx.fillStyle = "#8a515b"; // 莫兰迪红
+                ctx.font = "bold 20px Quicksand, Arial"; // 加大字号
                 ctx.textAlign = "center";
-                ctx.fillText(btn.icon, btn.x + btn.w/2, btn.y + btn.h/2 + 12);
+                ctx.fillText(messageTip.text, charX, charY - 40 - (50 - messageTip.timer));
+                messageTip.timer--;
+            }
+
+            drawUI();
+        }
+
+        function drawExitPortal(ctx, x, y) {
+            const pulse = Math.sin(Date.now() / 300) * 4;
+            ctx.fillStyle = "rgba(155, 183, 173, 0.4)";
+            ctx.beginPath(); ctx.arc(x, y, 12 + pulse, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "#9BB7AD";
+            ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = "white"; ctx.font = "bold 7px Arial"; ctx.textAlign = "center";
+            ctx.fillText("出口", x, y + 2.5);
+        }
+
+        function drawUI() {
+            ctx.fillStyle = "rgba(255,255,255,0.9)"; drawRoundedRect(ctx, 110, 20, 180, 45, 22.5);
+            ctx.fillStyle = timeLeft < 10 ? "#FF85A1" : "#9BB7AD";
+            ctx.font = "bold 18px Quicksand, Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(`剩余时间: ${timeLeft}s`, 200, 43);
+
+            for (let k in uiBtns) {
+                let btn = uiBtns[k]; ctx.save();
+                ctx.fillStyle = btn.active ? "rgba(217, 159, 169, 0.9)" : "rgba(255,255,255,0.7)";
+                ctx.strokeStyle = "white"; ctx.lineWidth = 4;
+                drawRoundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 20); ctx.stroke();
+                if (btn.img.complete && btn.img.naturalWidth !== 0) {
+                    const iconSize = 28; if(btn.active) ctx.filter = 'brightness(0) invert(1)';
+                    else ctx.globalAlpha = 0.6;
+                    ctx.drawImage(btn.img, btn.x + (btn.w-iconSize)/2, btn.y + (btn.h-iconSize)/2, iconSize, iconSize);
+                }
                 ctx.restore();
             }
         }
 
         function endGame(win) {
-            isGameOver = true;
-            clearInterval(timerInterval);
+            isGameOver = true; clearInterval(timerInterval);
             const title = document.getElementById('modal-title'), desc = document.getElementById('modal-desc');
-            if (win) { CandyAudio.play('ding'); title.innerText = "挑战成功！🍭"; desc.innerText = `你是迷宫大师！剩余能量: ${timeLeft}s`; }
-            else { CandyAudio.play('sad'); title.innerText = "可惜！🍩"; desc.innerText = "离出口只差一点点..."; }
+            if (win) { CandyAudio.play('ding'); title.innerText = "成功脱出！🍭"; title.style.color = "#9BB7AD"; desc.innerText = `恭喜逃离迷雾！剩余时间: ${timeLeft}s`; }
+            else { CandyAudio.play('sad'); title.innerText = "出逃失败 🍩"; title.style.color = "#D99FA9"; desc.innerText = "迷雾吞没了出口..."; }
             modal.style.display = 'flex';
         }
 
         function handleReset() { CandyAudio.play('click'); init(); }
-
-        function drawRoundedRect(ctx, x, y, w, h, r) {
-            ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath(); ctx.fill();
-        }
+        function drawRoundedRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath(); ctx.fill(); }
 
         init();
     </script>

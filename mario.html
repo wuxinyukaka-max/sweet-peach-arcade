@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>CAKE_DOWN // 无尽大冒险</title>
+    <title>CAKE_DOWN // 一体化无尽版</title>
     <link rel="stylesheet" href="style.css">
     <style>
+        /* --- 1. 极致居中布局 --- */
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
             display: flex; align-items: center; justify-content: center;
@@ -28,7 +29,7 @@
             width: auto; height: auto; display: block;
         }
 
-        /* 隐藏旧组件 */
+        /* 屏蔽外部旧组件 */
         #hud, .controls, .button-panel { display: none !important; }
         .back-home { position: absolute; top: 20px; left: 20px; z-index: 1000; font-weight: bold; }
 
@@ -40,7 +41,7 @@
         }
         .modal-content {
             background: white; width: 80%; max-width: 300px; padding: 30px;
-            border-radius: 40px; text-align: center; box-shadow: 0 25px 60px rgba(0,0,0,0.1);
+            border-radius: 40px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.1);
         }
     </style>
 </head>
@@ -49,7 +50,7 @@
     <a href="index.html" class="back-home" id="back-link">🏠 返回</a>
 
     <div id="game-container">
-        <!-- 画布比例：400x800 一体化封装 -->
+        <!-- 400x800 一体化比例 -->
         <canvas id="gameCanvas" width="400" height="800"></canvas>
     </div>
 
@@ -57,7 +58,7 @@
         <div class="modal-content">
             <h2 id="result-title" style="color:var(--candy-pink); margin:0; font-size:1.5rem;">哎呀！</h2>
             <p id="result-desc" style="color:#998888; margin:10px 0 20px; font-size: 0.9rem;"></p>
-            <button class="cute-btn wide" onclick="resetGame()" style="width: 100%; height: 50px; border-radius: 25px; font-size: 1rem;">重新开始</button>
+            <button class="cute-btn wide" onclick="resetGame()" style="width: 100%; height: 50px; border-radius: 25px; font-size: 1rem;">再来一局</button>
         </div>
     </div>
 
@@ -75,27 +76,35 @@
             }
         };
 
-        // --- 2. 核心变量 ---
+        // --- 2. 图标资源加载 ---
+        const iconAssets = {
+            left: new Image(),
+            right: new Image()
+        };
+        iconAssets.left.src = 'icons/left.svg';
+        iconAssets.right.src = 'icons/right.svg';
+
+        // --- 3. 核心变量 ---
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const modal = document.getElementById('over-modal');
 
         const GRAVITY = 0.5, SPEED = 6;
         const PLAY_AREA_TOP = 110;
-        const PLAY_AREA_BOTTOM = 750; // 由于按钮变细，活动区域下移
+        const PLAY_AREA_BOTTOM = 740;
 
         let player, platforms, layers, isGameOver, keys = { L:0, R:0 }, scrollSpeed = 1.5, animationId = null;
 
-        // --- 细长胶囊型按钮定义 ---
+        // 按钮定义：位置锁定在画布底部
         const uiBtns = {
-            left:  { x: 30,  y: 735, w: 160, h: 50, icon: '←', active: false, color: '#9BB7AD' },
-            right: { x: 210, y: 735, w: 160, h: 50, icon: '→', active: false, color: '#9BB7AD' }
+            left:  { x: 30,  y: 735, w: 160, h: 50, img: iconAssets.left,  active: false, color: '#9BB7AD' },
+            right: { x: 210, y: 735, w: 160, h: 50, img: iconAssets.right, active: false, color: '#9BB7AD' }
         };
 
         function init() {
             if (animationId) cancelAnimationFrame(animationId);
             isGameOver = false; layers = 0; scrollSpeed = 1.5;
             keys = { L:0, R:0 };
-            player = { x: 180, y: 300, w: 32, h: 32, vx: 0, vy: 0 };
+            player = { x: 184, y: 300, w: 32, h: 32, vx: 0, vy: 0 };
             modal.style.display = 'none';
             generateInitialPlatforms();
             loop();
@@ -119,7 +128,7 @@
             });
         }
 
-        // --- 3. 交互映射 ---
+        // --- 4. 交互系统 ---
         function getTouchPos(e) {
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
@@ -140,20 +149,19 @@
                     CandyAudio.play('click');
                 }
             }
+            draw();
         });
 
         window.addEventListener('pointerup', () => {
             uiBtns.left.active = uiBtns.right.active = false;
             keys.L = keys.R = false;
+            draw();
         });
 
-        // --- 4. 逻辑引擎 ---
+        // --- 5. 逻辑引擎 ---
         function update() {
-            if (keys.L) player.vx = -SPEED;
-            else if (keys.R) player.vx = SPEED;
-            else player.vx *= 0.8;
+            if (keys.L) player.vx = -SPEED; else if (keys.R) player.vx = SPEED; else player.vx *= 0.85;
             player.x += player.vx;
-
             if (player.x < 10) player.x = 10;
             if (player.x > 390 - player.w) player.x = 390 - player.w;
 
@@ -163,34 +171,26 @@
             platforms.forEach((p) => {
                 p.y -= scrollSpeed; 
                 if (player.vy >= 0 && 
-                    player.x + player.w > p.x && 
-                    player.x < p.x + p.w &&
-                    player.y + player.h > p.y && 
-                    player.y + player.h < p.y + p.h + player.vy + scrollSpeed) {
-                    
+                    player.x + player.w > p.x && player.x < p.x + p.w &&
+                    player.y + player.h > p.y && player.y + player.h < p.y + p.h + player.vy + scrollSpeed) {
                     if (p.active) {
                         player.y = p.y - player.h;
                         player.vy = 0;
-                        if (p.type === 'brittle') {
-                            p.w -= 1.8; 
-                            if (p.w < 20) p.active = false;
-                        }
+                        if (p.type === 'brittle') { p.w -= 1.8; if (p.w < 20) p.active = false; }
                     }
                 }
             });
 
             if (platforms.length > 0 && platforms[0].y < 70) {
-                platforms.shift();
-                layers++;
-                spawnPlatform();
+                platforms.shift(); layers++; spawnPlatform();
                 scrollSpeed = 1.5 + (layers * 0.02);
             }
 
-            if (player.y < PLAY_AREA_TOP) endGame("碰到钉板啦！🍓", `你坚持到了第 ${layers} 层`);
-            if (player.y > PLAY_AREA_BOTTOM) endGame("坠入深渊！🍩", `你坚持到了第 ${layers} 层`);
+            if (player.y < PLAY_AREA_TOP) endGame("碰到钉板啦！🍓", `坚持了 ${layers} 层`);
+            if (player.y > PLAY_AREA_BOTTOM) endGame("坠入深渊！🍩", `坚持了 ${layers} 层`);
         }
 
-        // --- 5. 绘图系统 ---
+        // --- 6. 绘图系统 ---
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -202,18 +202,20 @@
                 ctx.fill();
             }
 
-            // 2. HUD
+            // 2. HUD 积分胶囊
             ctx.fillStyle = "rgba(255,255,255,0.9)";
             drawRoundedRect(ctx, 130, 25, 140, 40, 20);
             ctx.fillStyle = "#D99FA9";
-            ctx.font = "bold 16px Quicksand, Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.fillText(`坚持层数 : ${layers}`, 200, 47);
+            ctx.font = "bold 16px Quicksand, Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(`坚持层数： ${layers}`, 200, 47);
 
-            // 3. 游戏活动区背景
+            // 3. 游戏活动区装饰背景
             ctx.fillStyle = "rgba(255,255,255,0.2)";
             drawRoundedRect(ctx, 15, PLAY_AREA_TOP + 10, 370, 600, 25);
 
-            // 4. 绘制平台
+            // 4. 平台绘制
             platforms.forEach(p => {
                 if (!p.active) return;
                 ctx.fillStyle = p.type === 'normal' ? "#9BB7AD" : "#E6D5B8";
@@ -222,33 +224,48 @@
                 ctx.strokeRect(p.x + 4, p.y + 4, p.w - 8, p.h - 8);
             });
 
-            // 5. 绘制玩家
+            // 5. 角色绘制
             ctx.fillStyle = "#D99FA9";
             drawRoundedRect(ctx, player.x, player.y, player.w, player.h, 10);
             ctx.fillStyle = "white"; 
-            ctx.fillRect(player.x+20, player.y+8, 4, 4); ctx.fillRect(player.x+6, player.y+8, 4, 4);
+            ctx.fillRect(player.x+20, player.y+8, 4, 4); ctx.fillRect(player.x+8, player.y+8, 4, 4);
 
-            // 6. 底部细长按钮 UI
-            // 绘制按钮底座面板
+            // 6. 底部一体化控制器
+            // 绘制底座托盘
             ctx.fillStyle = "rgba(255,255,255,0.4)";
             drawRoundedRect(ctx, 10, 725, 380, 70, 25);
 
             for (let b in uiBtns) {
                 let btn = uiBtns[b];
                 ctx.save();
-                // 按钮主体
+                // 按钮底座
                 ctx.fillStyle = btn.active ? "#D99FA9" : "rgba(255,255,255,0.85)";
                 ctx.strokeStyle = "white";
                 ctx.lineWidth = 3;
-                drawRoundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 21); // 高度一半为半径
+                drawRoundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 22);
                 ctx.stroke();
                 
-                // 按钮文字
-                ctx.fillStyle = btn.active ? "white" : "#6B5E5E";
-                ctx.font = "bold 24px Arial";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(btn.icon, btn.x + btn.w/2, btn.y + btn.h/2);
+                // 绘制图标 (带白色滤镜)
+                if (btn.img.complete && btn.img.naturalWidth !== 0) {
+                    const iconSize = 24;
+                    if(btn.active) ctx.filter = 'brightness(0) invert(1)';
+                    else ctx.globalAlpha = 0.7;
+                    
+                    ctx.drawImage(
+                        btn.img, 
+                        btn.x + (btn.w - iconSize) / 2, 
+                        btn.y + (btn.h - iconSize) / 2, 
+                        iconSize, 
+                        iconSize
+                    );
+                } else {
+                    // 图片未加载时的文字备份
+                    ctx.fillStyle = btn.active ? "white" : "#6B5E5E";
+                    ctx.font = "bold 18px Arial";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(b === 'left' ? '←' : '→', btn.x + btn.w/2, btn.y + btn.h/2);
+                }
                 ctx.restore();
             }
         }
