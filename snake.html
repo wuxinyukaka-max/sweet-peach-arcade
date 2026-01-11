@@ -95,16 +95,16 @@
         const GAME_Y_OFFSET = 90; 
 
         let snake, dir, food, score, isGameOver, lastTick = 0;
-        const SWEETS = ['🍑', '🍓', '🍬', '🍭', '🍦', '🍩', '🧁'];
+        const SWEETS = ['🍑', '🍓', '🍋', '🍭', '🍰', '🍩', '🧁'];
         
         // 蛇身多彩配色库
         const RAINBOW_COLORS = ['#A1B5D0', '#9BB7AD', '#E6D5B8', '#B4A7AF', '#C9A7AC'];
 
         const uiBtns = {
-            L: { x: 55,  y: 710, w: 80, h: 70, img: iconAssets.left,  key: {x: -1, y: 0}, color: '#9BB7AD' },
-            R: { x: 265, y: 710, w: 80, h: 70, img: iconAssets.right, key: {x: 1, y: 0},  color: '#9BB7AD' },
+            L: { x: 65,  y: 710, w: 80, h: 70, img: iconAssets.left,  key: {x: -1, y: 0}, color: '#9BB7AD' },
+            R: { x: 255, y: 710, w: 80, h: 70, img: iconAssets.right, key: {x: 1, y: 0},  color: '#9BB7AD' },
             U: { x: 160, y: 695, w: 80, h: 45, img: iconAssets.up,    key: {x: 0, y: -1}, color: '#D99FA9' },
-            D: { x: 160, y: 745, w: 80, h: 45, img: iconAssets.down,  key: {x: 0, y: 1},  color: '#9BB7AD' }
+            D: { x: 160, y: 750, w: 80, h: 45, img: iconAssets.down,  key: {x: 0, y: 1},  color: '#9BB7AD' }
         };
 
         function init() {
@@ -191,33 +191,93 @@
                 ctx.beginPath(); ctx.moveTo(i*GRID_SIZE, GAME_Y_OFFSET); ctx.lineTo(i*GRID_SIZE, GAME_Y_OFFSET + (ROWS * GRID_SIZE)); ctx.stroke(); 
             }
 
-            // 3. 绘制长条形多彩蛇身
-            snake.forEach((s, i) => {
-                const px = s.x * GRID_SIZE;
-                const py = s.y * GRID_SIZE + GAME_Y_OFFSET;
+            // --- 3. 绘制极致Q弹：S型波浪呼吸蛇身 ---
+            const time = Date.now() / 250; // 动画速度因子
+
+            // 倒序绘制：让蛇头最后叠在最上面，更有层次感
+            for (let i = snake.length - 1; i >= 0; i--) {
+                const s = snake[i];
                 
+                // 1. 基础中心坐标
+                const baseX = s.x * GRID_SIZE + GRID_SIZE / 2;
+                const baseY = s.y * GRID_SIZE + GAME_Y_OFFSET + GRID_SIZE / 2;
+
+                // 2. S型扭动逻辑：只在垂直于行进方向的轴上做波浪位移
+                // 每一个节段 i 都有相位差，形成顺滑的曲线
+                const wiggleMagnitude = GRID_SIZE * 0.15; // 扭动幅度
+                const wiggleWave = Math.sin(time * 1.2 - i * 0.8);
+                
+                let offsetX = (dir.y !== 0) ? wiggleWave * wiggleMagnitude : 0;
+                let offsetY = (dir.x !== 0) ? wiggleWave * wiggleMagnitude : 0;
+
+                // 3. 呼吸感逻辑：每一颗球独立缩放，带有相位差
+                const breathe = 1 + Math.sin(time * 2 - i * 0.4) * 0.08;
+                
+                // 4. 尾部微缩：让尾巴看起来更灵动
+                const tailScale = Math.max(0.6, 1 - (i / snake.length) * 0.3);
+                
+                // 5. 最终球体半径：略大于 GRID_SIZE 的一半，确保连贯不留缝隙
+                const finalRadius = (GRID_SIZE * 0.65) * breathe * tailScale;
+
+                ctx.save();
+                ctx.translate(baseX + offsetX, baseY + offsetY);
+
                 if (i === 0) {
-                    // 绘制蛇头
+                    // --- 绘制超级灵动的大头兔兔蛇头 ---
                     ctx.fillStyle = '#D99FA9';
-                    drawRoundedRect(ctx, px + 1, py + 1, GRID_SIZE - 2, GRID_SIZE - 2, 10);
-                    // 绘制眼睛
+                    ctx.beginPath();
+                    ctx.arc(0, 0, finalRadius * 1.1, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 绘制灵动大眼
+                    const eyeX = finalRadius * 0.45;
+                    const eyeY = -finalRadius * 0.2;
+                    
+                    // 眼白
                     ctx.fillStyle = "white";
                     ctx.beginPath();
-                    ctx.arc(px + GRID_SIZE*0.3, py + GRID_SIZE*0.4, 4, 0, 7);
-                    ctx.arc(px + GRID_SIZE*0.7, py + GRID_SIZE*0.4, 4, 0, 7);
+                    ctx.arc(-eyeX, eyeY, finalRadius * 0.4, 0, 7);
+                    ctx.arc(eyeX, eyeY, finalRadius * 0.4, 0, 7);
                     ctx.fill();
+
+                    // 瞳孔 (带眨眼效果)
+                    const isBlinking = Math.sin(time * 0.5) > 0.98;
                     ctx.fillStyle = "#6B5E5E";
+                    if (!isBlinking) {
+                        ctx.beginPath();
+                        ctx.arc(-eyeX, eyeY, finalRadius * 0.18, 0, 7);
+                        ctx.arc(eyeX, eyeY, finalRadius * 0.18, 0, 7);
+                        ctx.fill();
+                    }
+
+                    // 腮红
+                    ctx.fillStyle = "rgba(255, 133, 161, 0.4)";
                     ctx.beginPath();
-                    ctx.arc(px + GRID_SIZE*0.3, py + GRID_SIZE*0.4, 1.5, 0, 7);
-                    ctx.arc(px + GRID_SIZE*0.7, py + GRID_SIZE*0.4, 1.5, 0, 7);
+                    ctx.arc(-eyeX * 1.3, eyeY + finalRadius * 0.6, finalRadius * 0.3, 0, 7);
+                    ctx.arc(eyeX * 1.3, eyeY + finalRadius * 0.6, finalRadius * 0.3, 0, 7);
                     ctx.fill();
+
                 } else {
-                    // 绘制多彩身体
+                    // --- 绘制多彩果冻身体 (每一颗都是独立的球) ---
                     ctx.fillStyle = RAINBOW_COLORS[i % RAINBOW_COLORS.length];
-                    // 稍微增加一点大小 (GRID_SIZE + 1) 使其产生连贯感
-                    drawRoundedRect(ctx, px, py, GRID_SIZE, GRID_SIZE, 6);
+                    ctx.beginPath();
+                    ctx.arc(0, 0, finalRadius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 每一颗球都有独立的高光
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+                    ctx.beginPath();
+                    ctx.ellipse(-finalRadius*0.3, -finalRadius*0.3, finalRadius*0.4, finalRadius*0.2, Math.PI/4, 0, 7);
+                    ctx.fill();
                 }
-            });
+
+                // 统一的白色奶油边缘描边
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.restore();
+            }
 
             // 4. 食物 (完美居中)
             ctx.font = "20px Arial";

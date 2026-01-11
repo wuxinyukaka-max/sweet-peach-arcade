@@ -224,12 +224,75 @@
                 ctx.strokeRect(p.x + 4, p.y + 4, p.w - 8, p.h - 8);
             });
 
-            // 5. 角色绘制
-            ctx.fillStyle = "#D99FA9";
-            drawRoundedRect(ctx, player.x, player.y, player.w, player.h, 10);
-            ctx.fillStyle = "white"; 
-            ctx.fillRect(player.x+20, player.y+8, 4, 4); ctx.fillRect(player.x+8, player.y+8, 4, 4);
+            // --- 5. 绘制极致可爱的带帽双腿草莓团子 ---
+            const time = Date.now() / 180; 
+            const bounce = Math.sin(time) * 0.1; // 呼吸系数
+            
+            ctx.save();
+            // 坐标原点设在角色脚底中心
+            ctx.translate(player.x + player.w / 2, player.y + player.h);
+            
+            // 整体呼吸律动感 (向左右挤压，向上拉伸)
+            ctx.scale(1 + bounce, 1 - bounce);
 
+            // A. 绘制两条可爱的小短腿
+            ctx.fillStyle = "#D99FA9"; // 与身体同色
+            const legW = 8; const legH = 10;
+            const legOffset = 6 + bounce * 8; // 腿随身体挤压而张开
+            drawRoundedRect(ctx, -legOffset - legW/2, -5, legW, legH, 4); // 左腿
+            drawRoundedRect(ctx, legOffset - legW/2, -5, legW, legH, 4);  // 右腿
+
+            // B. 绘制挥舞的小短手 (在身体后面一点)
+            ctx.fillStyle = "#E9BFC7"; // 手部颜色稍浅，增加层次感
+            const armW = 10; const armH = 8;
+            const armMove = bounce * 12; // 手臂摆动幅度
+            // 左手
+            drawRoundedRect(ctx, -player.w/2 - 5 - armMove, -player.h * 0.5, armW, armH, 4);
+            // 右手
+            drawRoundedRect(ctx, player.w/2 + 5 + armMove - armW, -player.h * 0.5, armW, armH, 4);
+
+            // C. 绘制糯米大福身体
+            ctx.fillStyle = "#D99FA9";
+            drawRoundedRect(ctx, -player.w / 2, -player.h - 2, player.w, player.h, 15);
+            
+            // D. 绘制抹茶色贝雷帽 (小帽子)
+            ctx.save();
+            ctx.translate(0, -player.h - 2);
+            ctx.rotate(-0.15); // 帽子斜着戴更可爱
+            // 帽子主体
+            ctx.fillStyle = "#9BB7AD"; // 莫兰迪抹茶绿
+            drawRoundedRect(ctx, -14, -6, 28, 10, 5);
+            // 帽子顶部的小揪揪 (梗)
+            ctx.fillRect(-1.5, -9, 3, 4);
+            ctx.restore();
+
+            // E. 绘制水灵灵的大眼睛
+            const eyeX = 8; const eyeY = -player.h * 0.6;
+            ctx.fillStyle = "#5A4A4A"; // 深色瞳孔
+            ctx.beginPath();
+            ctx.arc(-eyeX, eyeY, 4.5, 0, Math.PI * 2); 
+            ctx.arc(eyeX, eyeY, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 眼睛高光 (大点+小点)
+            ctx.fillStyle = "white";
+            ctx.beginPath();
+            ctx.arc(-eyeX - 1.5, eyeY - 1.5, 1.8, 0, Math.PI * 2); // 左大
+            ctx.arc(eyeX - 1.5, eyeY - 1.5, 1.8, 0, Math.PI * 2);  // 右大
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(-eyeX + 1.2, eyeY + 1.2, 0.8, 0, Math.PI * 2); // 左小
+            ctx.arc(eyeX + 1.2, eyeY + 1.2, 0.8, 0, Math.PI * 2);  // 右小
+            ctx.fill();
+
+            // F. 嘟嘟粉腮红
+            ctx.fillStyle = "rgba(255, 133, 161, 0.4)";
+            ctx.beginPath();
+            ctx.arc(-13, eyeY + 8, 3, 0, Math.PI * 2);
+            ctx.arc(13, eyeY + 8, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
             // 6. 底部一体化控制器
             // 绘制底座托盘
             ctx.fillStyle = "rgba(255,255,255,0.4)";
