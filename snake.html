@@ -64,7 +64,7 @@
     </div>
 
     <script>
-        // --- 1. 糖果音效引擎 (Q弹莫兰迪版 - 已去电子味) ---
+        // --- 1. 糖果音效引擎 (温润Q弹版 - 彻底去尖锐感) ---
         const CandyAudio = {
             ctx: null,
             init() { 
@@ -75,54 +75,53 @@
                 this.init();
                 const n = this.ctx.currentTime;
                 
-                // 1. 按钮点击：应要求彻底静音
+                // 按钮点击已按要求静音
                 if (type === 'click') return; 
 
-                // 2. 创建核心组件：振荡器、增益器、低通滤波器(去电子味的关键)
                 const o = this.ctx.createOscillator();
                 const g = this.ctx.createGain();
                 const f = this.ctx.createBiquadFilter();
 
-                // 滤波器设置：切掉刺耳的高频，让声音变温润、肉感
+                // 核心：强力低通滤波，切掉所有刺耳的高频毛刺
                 f.type = 'lowpass';
-                f.Q.value = 5; // 增加一点Q值，让声音有“啵啵”的空气感
+                f.frequency.setValueAtTime(1200, n); // 限制频率在1200Hz以下，声音变“肉”
+                f.Q.value = 2; 
 
                 o.connect(f);
                 f.connect(g);
                 g.connect(this.ctx.destination);
 
                 if (type === 'ding') { 
-                    // --- 吃到糖果：Q弹的“啾叮”声 ---
-                    o.type = 'sine'; // 正弦波最圆润
-                    f.frequency.setValueAtTime(2000, n);
-                    // 频率快速上行：模拟果冻弹回
-                    o.frequency.setValueAtTime(600, n);
-                    o.frequency.exponentialRampToValueAtTime(1600, n + 0.12);
+                    // --- 吃到糖果：温润的“啵嘤”声 ---
+                    o.type = 'sine'; // 纯净正弦波
+                    // 频率从较低的 300Hz 滑向 900Hz，避开高频尖刺区
+                    o.frequency.setValueAtTime(350, n);
+                    o.frequency.exponentialRampToValueAtTime(900, n + 0.15);
                     
+                    // 柔和的音量包络：稍微加长起音时间，消除“咔嗒”爆破音
                     g.gain.setValueAtTime(0, n);
-                    g.gain.linearRampToValueAtTime(0.2, n + 0.01);
-                    g.gain.exponentialRampToValueAtTime(0.01, n + 0.3);
-                    
-                    o.start(n);
-                    o.stop(n + 0.3);
-                } 
-                else if (type === 'sad') { 
-                    // --- 撞墙：闷声闷气的“噗~” ---
-                    o.type = 'triangle'; // 三角波比方波软很多
-                    f.frequency.setValueAtTime(500, n); // 极低的滤波，声音非常闷
-                    
-                    o.frequency.setValueAtTime(250, n);
-                    o.frequency.exponentialRampToValueAtTime(60, n + 0.4);
-                    
-                    g.gain.setValueAtTime(0.2, n);
-                    g.gain.linearRampToValueAtTime(0, n + 0.4);
+                    g.gain.linearRampToValueAtTime(0.2, n + 0.02); 
+                    g.gain.exponentialRampToValueAtTime(0.01, n + 0.4);
                     
                     o.start(n);
                     o.stop(n + 0.4);
+                } 
+                else if (type === 'sad') { 
+                    // --- 撞墙：闷声闷气的“呜噗” ---
+                    o.type = 'sine';
+                    f.frequency.setValueAtTime(400, n); // 极低滤波
+                    
+                    o.frequency.setValueAtTime(200, n);
+                    o.frequency.linearRampToValueAtTime(60, n + 0.5);
+                    
+                    g.gain.setValueAtTime(0.15, n);
+                    g.gain.linearRampToValueAtTime(0, n + 0.5);
+                    
+                    o.start(n);
+                    o.stop(n + 0.5);
                 }
             }
         };
-
         const iconAssets = {
             left: new Image(), right: new Image(), up: new Image(), down: new Image()
         };

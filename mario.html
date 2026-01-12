@@ -63,7 +63,7 @@
     </div>
 
     <script>
-        // --- 1. 糖果音效引擎 (莫兰迪 Q 弹版 - 适配下行大冒险) ---
+        // --- 1. 糖果音效引擎 ---
         const CandyAudio = {
             ctx: null,
             init() { 
@@ -71,67 +71,27 @@
                 if (this.ctx.state === 'suspended') this.ctx.resume(); 
             },
             play(type) {
-                this.init();
+                this.init(); 
                 const n = this.ctx.currentTime;
-
-                // 1. 左右移动频繁点击：保持静音，净化游戏环境
-                if (type === 'click') return; 
-
-                // 创建核心音频节点
-                const o = this.ctx.createOscillator();
+                const o = this.ctx.createOscillator(); 
                 const g = this.ctx.createGain();
                 const f = this.ctx.createBiquadFilter();
+                f.type = 'lowpass'; f.Q.value = 5;
+                o.connect(f); f.connect(g); g.connect(this.ctx.destination);
 
-                // 低通滤波器：核心去电子味工具，让声音听起来像“包在奶油里”
-                f.type = 'lowpass';
-                f.Q.value = 5; // 增加一点弹性共振
-
-                o.connect(f);
-                f.connect(g);
-                g.connect(this.ctx.destination);
-
-                if (type === 'dead') {
-                    // --- 失败：闷声闷气的“噗~呜” (像蛋糕掉在地上) ---
-                    o.type = 'triangle';
-                    f.frequency.setValueAtTime(400, n); // 极低滤波，去掉刺耳声
-                    
+                if (type === 'jump') { // 弹跳/跳跃音
+                    o.type = 'sine'; f.frequency.setValueAtTime(1500, n);
+                    o.frequency.setValueAtTime(200, n);
+                    o.frequency.quadraticCurveToAtTime(100, n + 0.03, 900, n + 0.15);
+                    g.gain.setValueAtTime(0.15, n); g.gain.exponentialRampToValueAtTime(0.01, n + 0.2);
+                    o.start(n); o.stop(n + 0.2);
+                } 
+                else if (type === 'dead') { // 失败音
+                    o.type = 'triangle'; f.frequency.setValueAtTime(400, n);
                     o.frequency.setValueAtTime(250, n);
                     o.frequency.exponentialRampToValueAtTime(60, n + 0.5);
-                    
-                    g.gain.setValueAtTime(0.2, n);
-                    g.gain.linearRampToValueAtTime(0, n + 0.5);
-                    
-                    o.start(n);
-                    o.stop(n + 0.5);
-                } 
-                else if (type === 'jump') {
-                    // --- 跳跃/弹起：像拉动橡皮筋的“哔咻！” ---
-                    o.type = 'sine'; // 正弦波最Q弹
-                    f.frequency.setValueAtTime(1500, n);
-                    
-                    o.frequency.setValueAtTime(200, n);
-                    o.frequency.quadraticCurveToAtTime(100, n + 0.05, 900, n + 0.15); // U型蓄力滑音
-                    
-                    g.gain.setValueAtTime(0.15, n);
-                    g.gain.exponentialRampToValueAtTime(0.01, n + 0.2);
-                    
-                    o.start(n);
-                    o.stop(n + 0.2);
-                }
-                else if (type === 'star' || type === 'ding') {
-                    // --- 达成目标/得分：清脆的木琴声“叮铃~” ---
-                    o.type = 'sine';
-                    f.frequency.setValueAtTime(2500, n);
-                    
-                    o.frequency.setValueAtTime(880, n); // A5音
-                    o.frequency.exponentialRampToValueAtTime(1760, n + 0.1); // 快速滑向高八度
-                    
-                    g.gain.setValueAtTime(0, n);
-                    g.gain.linearRampToValueAtTime(0.2, n + 0.01);
-                    g.gain.exponentialRampToValueAtTime(0.01, n + 0.3);
-                    
-                    o.start(n);
-                    o.stop(n + 0.3);
+                    g.gain.setValueAtTime(0.2, n); g.gain.linearRampToValueAtTime(0, n + 0.5);
+                    o.start(n); o.stop(n + 0.5);
                 }
             }
         };
