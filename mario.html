@@ -21,10 +21,10 @@
         }
 
         canvas {
-            background: #EBE7E4;
-            border: 6px solid white;
+            background: #F4F1F0;
+            border: none !important;
             border-radius: 40px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            box-shadow: none !important;
             max-width: 95vw; max-height: 92vh;
             width: auto; height: auto; display: block;
         }
@@ -232,7 +232,7 @@
             ctx.fillText(`坚持层数： ${layers}`, 200, 47);
 
             // 3. 游戏活动区装饰背景
-            ctx.fillStyle = "rgba(255,255,255,0.2)";
+            ctx.fillStyle = "rgba(235, 231, 228, 0.8)";
             drawRoundedRect(ctx, 15, PLAY_AREA_TOP + 10, 370, 600, 25);
 
             // 4. 平台绘制

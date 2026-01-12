@@ -5,7 +5,7 @@
     --candy-blue: #A1B5D0;    /* 柔雾蓝 */
     --candy-yellow: #E6D5B8;  /* 奶茶黄 */
     --bg-main: #F4F1F0;       /* 大背景：燕麦色 */
-    --bg-canvas: #EBE7E4;     /* 画布底色：乳酪灰 */
+    --bg-canvas: #F4F1F0;     /* 画布底色：乳酪灰 */
     --bg-card: #FDFBFA;       /* 容器/按钮色：奶白色 */
     --text-dark: #6B5E5E;     /* 文字颜色：巧克力啡 */
 }
@@ -45,12 +45,12 @@ body, html {
 }
 
 canvas { 
-    border: 6px solid var(--bg-card); 
+    border: none !important;
     border-radius: 35px; 
     background-color: var(--bg-canvas); 
-    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.05); 
+    box-shadow: none !important; 
     /* 竖屏核心限制：宽度最大占95%，高度留出控制器的空间 */
-    max-width: 95vw;
+    max-width: vw;
     max-height: 60vh; 
     width: auto;
     height: auto;

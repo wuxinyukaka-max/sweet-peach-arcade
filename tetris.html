@@ -20,10 +20,10 @@
         }
 
         canvas {
-            background: #EBE7E4;
-            border: 6px solid white;
+            background: #F4F1F0;
+            border: none !important;
             border-radius: 40px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            box-shadow: none !important;;
             max-width: 95vw;
             max-height: 92vh;
             width: auto; height: auto;
@@ -143,18 +143,18 @@
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const modal = document.getElementById('over-modal');
 
-        const COLS = 10, ROWS = 20, BLOCK = 30; 
-        const GRID_X_START = 50; 
-        const GRID_Y_START = 95; 
+        const COLS = 12, ROWS = 20, BLOCK = 30; 
+        const GRID_X_START = 25; 
+        const GRID_Y_START = 85; 
         
         let board, score, isGameOver, lastTick, tickSpeed, curr;
 
         // --- 核心修复 1：统一属性名称为 img ---
         const uiBtns = {
-            L: { x: 35,  y: 710, w: 70, h: 70, img: iconAssets.left,  active: false, color: '#9BB7AD' },
-            R: { x: 125, y: 710, w: 70, h: 70, img: iconAssets.right, active: false, color: '#9BB7AD' },
-            Rot: { x: 215, y: 710, w: 70, h: 70, img: iconAssets.turn,  active: false, color: '#D99FA9' },
-            Drop: { x: 305, y: 710, w: 70, h: 70, img: iconAssets.down,  active: false, color: '#9BB7AD' }
+            L: { x: 35,  y: 700, w: 70, h: 70, img: iconAssets.left,  active: false, color: '#9BB7AD' },
+            R: { x: 125, y: 700, w: 70, h: 70, img: iconAssets.right, active: false, color: '#9BB7AD' },
+            Rot: { x: 215, y: 700, w: 70, h: 70, img: iconAssets.turn,  active: false, color: '#D99FA9' },
+            Drop: { x: 305, y: 700, w: 70, h: 70, img: iconAssets.down,  active: false, color: '#9BB7AD' }
         };
 
         const COLORS = [null, '#D99FA9', '#A1B5D0', '#9BB7AD', '#E6D5B8', '#B4A7AF', '#C9A7AC', '#ADB8A6'];
@@ -182,11 +182,19 @@
             for (let k in uiBtns) {
                 let btn = uiBtns[k];
                 if (pos.x > btn.x && pos.x < btn.x + btn.w && pos.y > btn.y && pos.y < btn.y + btn.h) {
-                    btn.active = true; CandyAudio.play('click');
+                    btn.active = true; 
+                    CandyAudio.play('click');
+                    
                     if (k === 'L' && !collide(-1, 0)) curr.x--;
                     if (k === 'R' && !collide(1, 0)) curr.x++;
                     if (k === 'Rot') rotate();
-                    if (k === 'Drop') hardDrop();
+                    
+                    // --- 修改这里：如果是向下键，不需要执行任何函数 ---
+                    // 因为 loop 函数会根据 btn.active 自动处理加速
+                    if (k === 'Drop') {
+                        // 可选：在这里加一句 curr.y++ 让点按瞬间也有反应
+                        if (!collide(0, 1)) curr.y++; 
+                    }
                 }
             }
             draw();
@@ -236,17 +244,38 @@
             ctx.textBaseline = "middle";
             ctx.fillText(`SCORE: ${score}`, 200, 48);
 
-            // 2. 网格容器
-            ctx.fillStyle = "rgba(255,255,255,0.4)";
-            drawRoundedRect(ctx, GRID_X_START - 5, GRID_Y_START - 5, (COLS * BLOCK) + 10, (ROWS * BLOCK) + 10, 15);
+            // 2. 网格容器（奶油托盘背景）
+            ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; // 使用半透明白
+            drawRoundedRect(ctx, GRID_X_START - 10, GRID_Y_START - 10, (COLS * BLOCK) + 20, (ROWS * BLOCK) + 20, 25);
             
-            ctx.strokeStyle = "rgba(107, 94, 94, 0.05)";
+            // 绘制辅助网格线（莫兰迪浅咖色）
+            ctx.strokeStyle = "rgba(107, 94, 94, 0.1)"; 
             ctx.lineWidth = 1;
-            for(let i=0; i<=COLS; i++) { 
+
+            // --- A. 绘制竖线 ---
+            for(let i = 0; i <= COLS; i++) { 
                 ctx.beginPath(); 
-                ctx.moveTo(GRID_X_START + i*BLOCK, GRID_Y_START); 
-                ctx.lineTo(GRID_X_START + i*BLOCK, GRID_Y_START + ROWS*BLOCK); 
+                ctx.moveTo(GRID_X_START + i * BLOCK, GRID_Y_START); 
+                ctx.lineTo(GRID_X_START + i * BLOCK, GRID_Y_START + ROWS * BLOCK); 
                 ctx.stroke(); 
+            }
+
+            // --- B. 绘制横线 (新增部分) ---
+            for(let j = 0; j <= ROWS; j++) {
+                ctx.beginPath();
+                ctx.moveTo(GRID_X_START, GRID_Y_START + j * BLOCK);
+                ctx.lineTo(GRID_X_START + COLS * BLOCK, GRID_Y_START + j * BLOCK);
+                ctx.stroke();
+            }
+
+            // 可选：在交叉点画极其微小的圆点，增加高级感（类似设计师草稿纸）
+            ctx.fillStyle = "rgba(107, 94, 94, 0.3)";
+            for(let i = 0; i <= COLS; i++) {
+                for(let j = 0; j <= ROWS; j++) {
+                    ctx.beginPath();
+                    ctx.arc(GRID_X_START + i * BLOCK, GRID_Y_START + j * BLOCK, 1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
             }
 
             // 3. 绘制方块
@@ -303,10 +332,22 @@
 
         function loop(t) {
             if (isGameOver) return;
-            if (t - lastTick > tickSpeed) {
-                if (!collide(0, 1)) curr.y++; else { freeze(); clearLines(); newPiece(); }
+
+            // --- 核心修改：动态计算下落间隔 ---
+            // 如果“向下”按钮被按住，间隔设为 50 毫秒，否则使用正常的 tickSpeed
+            let currentDelay = uiBtns.Drop.active ? 50 : tickSpeed;
+
+            if (t - lastTick > currentDelay) {
+                if (!collide(0, 1)) {
+                    curr.y++;
+                } else {
+                    freeze();
+                    clearLines();
+                    newPiece();
+                }
                 lastTick = t;
             }
+
             draw();
             requestAnimationFrame(loop);
         }

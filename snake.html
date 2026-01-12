@@ -21,10 +21,10 @@
         }
 
         canvas {
-            background: #EBE7E4;
-            border: 6px solid white;
+            background: #F4F1F0;
+            border: none !important;
             border-radius: 40px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            box-shadow: none !important;
             max-width: 95vw;
             max-height: 92vh;
             width: auto; height: auto;
@@ -225,14 +225,38 @@
             ctx.fillText(`SWEETS: ${score}`, 200, 43);
 
             // 2. 游戏区域
-            ctx.fillStyle = "rgba(255,255,255,0.3)";
+            // 2. 游戏区域 (奶油托盘背景 - 调优为半透明白)
+            ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; 
             drawRoundedRect(ctx, 0, GAME_Y_OFFSET, 400, ROWS * GRID_SIZE, 0);
             
-            // 莫兰迪网格线
-            ctx.strokeStyle = "rgba(107, 94, 94, 0.04)";
+            // 莫兰迪辅助网格线
+            ctx.strokeStyle = "rgba(107, 94, 94, 0.05)";
             ctx.lineWidth = 1;
-            for(let i=0; i<=COLS; i++) { 
-                ctx.beginPath(); ctx.moveTo(i*GRID_SIZE, GAME_Y_OFFSET); ctx.lineTo(i*GRID_SIZE, GAME_Y_OFFSET + (ROWS * GRID_SIZE)); ctx.stroke(); 
+
+            // --- A. 绘制竖线 ---
+            for(let i = 0; i <= COLS; i++) { 
+                ctx.beginPath(); 
+                ctx.moveTo(i * GRID_SIZE, GAME_Y_OFFSET); 
+                ctx.lineTo(i * GRID_SIZE, GAME_Y_OFFSET + (ROWS * GRID_SIZE)); 
+                ctx.stroke(); 
+            }
+
+            // --- B. 绘制横线 (新增部分) ---
+            for(let j = 0; j <= ROWS; j++) {
+                ctx.beginPath();
+                ctx.moveTo(0, GAME_Y_OFFSET + j * GRID_SIZE);
+                ctx.lineTo(COLS * GRID_SIZE, GAME_Y_OFFSET + j * GRID_SIZE);
+                ctx.stroke();
+            }
+
+            // 可选细节：在交叉点画极其微小的装饰点，提升高级感
+            ctx.fillStyle = "rgba(107, 94, 94, 0.3)";
+            for(let i = 0; i <= COLS; i++) {
+                for(let j = 0; j <= ROWS; j++) {
+                    ctx.beginPath();
+                    ctx.arc(i * GRID_SIZE, GAME_Y_OFFSET + j * GRID_SIZE, 1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
             }
 
             // --- 3. 绘制极致Q弹：S型波浪呼吸蛇身 ---
