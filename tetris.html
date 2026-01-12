@@ -143,18 +143,18 @@
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const modal = document.getElementById('over-modal');
 
-        const COLS = 12, ROWS = 20, BLOCK = 30; 
+        const COLS = 10, ROWS = 16, BLOCK = 35; 
         const GRID_X_START = 25; 
-        const GRID_Y_START = 85; 
+        const GRID_Y_START = 90; 
         
         let board, score, isGameOver, lastTick, tickSpeed, curr;
 
         // --- 核心修复 1：统一属性名称为 img ---
         const uiBtns = {
-            L: { x: 35,  y: 700, w: 70, h: 70, img: iconAssets.left,  active: false, color: '#9BB7AD' },
-            R: { x: 125, y: 700, w: 70, h: 70, img: iconAssets.right, active: false, color: '#9BB7AD' },
-            Rot: { x: 215, y: 700, w: 70, h: 70, img: iconAssets.turn,  active: false, color: '#D99FA9' },
-            Drop: { x: 305, y: 700, w: 70, h: 70, img: iconAssets.down,  active: false, color: '#9BB7AD' }
+            L: { x: 30,  y: 680, w: 70, h: 70, img: iconAssets.left,  active: false, color: '#9BB7AD' },
+            R: { x: 120, y: 680, w: 70, h: 70, img: iconAssets.right, active: false, color: '#9BB7AD' },
+            Rot: { x: 210, y: 680, w: 70, h: 70, img: iconAssets.turn,  active: false, color: '#D99FA9' },
+            Drop: { x: 300, y: 680, w: 70, h: 70, img: iconAssets.down,  active: false, color: '#9BB7AD' }
         };
 
         const COLORS = [null, '#D99FA9', '#A1B5D0', '#9BB7AD', '#E6D5B8', '#B4A7AF', '#C9A7AC', '#ADB8A6'];
@@ -269,7 +269,7 @@
             }
 
             // 可选：在交叉点画极其微小的圆点，增加高级感（类似设计师草稿纸）
-            ctx.fillStyle = "rgba(107, 94, 94, 0.3)";
+            ctx.fillStyle = "rgba(107, 94, 94, 0.1)";
             for(let i = 0; i <= COLS; i++) {
                 for(let j = 0; j <= ROWS; j++) {
                     ctx.beginPath();

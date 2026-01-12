@@ -57,7 +57,7 @@
 
     <div id="over-modal" class="modal-overlay">
         <div class="modal-content">
-            <h2 style="color: var(--candy-pink); margin-bottom: 5px; font-size: 1.5rem;">哎呀！撞翻啦 🍓</h2>
+            <h2 style="color: var(--candy-pink); margin-bottom: 5px; font-size: 1.5rem;">哎呀！撞翻啦🍩</h2>
             <p style="color: #998888; font-size: 0.9rem; margin-bottom: 25px;">你收集了 <span id="final-score" style="color:var(--candy-pink); font-weight:bold;">0</span> 个甜点</p>
             <button class="cute-btn wide" onclick="handleReset()" style="width: 100%; height: 50px; border-radius: 25px; font-size: 1rem;">再来一颗糖！</button>
         </div>
@@ -132,14 +132,15 @@
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const modal = document.getElementById('over-modal');
 
-        // 调整：格子变大，总数变少
-        const GRID_SIZE = 25; 
-        const COLS = 16; // 400 / 25
-        const ROWS = 22; // 600 / 25
-        const GAME_Y_OFFSET = 90; 
+        // --- 核心配置：针对 28px 的精准对齐 ---
+        const GRID_SIZE = 28; 
+        const COLS = 13;      // 13 * 28 = 364px
+        const ROWS = 18;      // 18 * 28 = 504px
+        const GAME_X_OFFSET = (400 - COLS * GRID_SIZE) / 2; // 结果为 18px
+        const GAME_Y_OFFSET = 100; // 适当下移，给顶部留位
 
-        let snake, dir, food, score, isGameOver, lastTick = 0;
-        const SWEETS = ['🍑', '🍓', '🍋', '🍭', '🍰', '🍩', '🧁'];
+        let snake, dir, food, score, isGameOver, lastTick = 0, rippleDecors = [];
+        const SWEETS = ['🍮', '🍯', '🍪', '🍧', '🍦', '🍩', '🧁', '🍭'];
         
         // 蛇身多彩配色库
         const RAINBOW_COLORS = ['#A1B5D0', '#9BB7AD', '#E6D5B8', '#B4A7AF', '#C9A7AC'];
@@ -195,7 +196,7 @@
         function loop(t) {
             if (isGameOver) return;
             requestAnimationFrame(loop);
-            if (t - lastTick < 180) return; // 移动速度稍微减慢一点，手感更扎实
+            if (t - lastTick < 200) return; // 移动速度稍微减慢一点，手感更扎实
             lastTick = t;
 
             const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
@@ -225,39 +226,70 @@
             ctx.fillText(`SWEETS: ${score}`, 200, 43);
 
             // 2. 游戏区域
-            // 2. 游戏区域 (奶油托盘背景 - 调优为半透明白)
-            ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; 
-            drawRoundedRect(ctx, 0, GAME_Y_OFFSET, 400, ROWS * GRID_SIZE, 0);
-            
-            // 莫兰迪辅助网格线
-            ctx.strokeStyle = "rgba(107, 94, 94, 0.05)";
-            ctx.lineWidth = 1;
+            // --- 3. 游戏区域托盘与危险边界 (13x20 网格) ---
+            const gridWidth = COLS * GRID_SIZE;
+            const gridHeight = ROWS * GRID_SIZE;
+            const trayPadding = 12;
 
-            // --- A. 绘制竖线 ---
-            for(let i = 0; i <= COLS; i++) { 
+            // A. 底层白色奶油托盘
+            ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; 
+            drawRoundedRect(ctx, 
+                GAME_X_OFFSET - trayPadding, 
+                GAME_Y_OFFSET - trayPadding, 
+                gridWidth + (trayPadding * 2), 
+                gridHeight + (trayPadding * 2), 
+                35 // 托盘大圆角
+            );
+
+            // B. 核心：死亡边界线 (加粗的莫兰迪粉)
+            ctx.strokeStyle = "rgba(217, 159, 169, 0.5)"; // 莫兰迪粉透明版
+            ctx.lineWidth = 4; // 较粗的线条，提醒这是墙壁
+            ctx.lineJoin = "round";
+            ctx.beginPath();
+            // 绘制紧贴网格边缘的边框
+            ctx.strokeRect(GAME_X_OFFSET, GAME_Y_OFFSET, gridWidth, gridHeight);
+
+            // C. 辅助网格线 (内部虚线或细线)
+            ctx.strokeStyle = "rgba(107, 94, 94, 0.05)"; 
+            ctx.lineWidth = 1;
+            // 竖线
+            for(let i = 1; i < COLS; i++) { 
                 ctx.beginPath(); 
-                ctx.moveTo(i * GRID_SIZE, GAME_Y_OFFSET); 
-                ctx.lineTo(i * GRID_SIZE, GAME_Y_OFFSET + (ROWS * GRID_SIZE)); 
+                ctx.moveTo(GAME_X_OFFSET + i * GRID_SIZE, GAME_Y_OFFSET); 
+                ctx.lineTo(GAME_X_OFFSET + i * GRID_SIZE, GAME_Y_OFFSET + gridHeight); 
                 ctx.stroke(); 
             }
-
-            // --- B. 绘制横线 (新增部分) ---
-            for(let j = 0; j <= ROWS; j++) {
+            // 横线
+            for(let j = 1; j < ROWS; j++) {
                 ctx.beginPath();
-                ctx.moveTo(0, GAME_Y_OFFSET + j * GRID_SIZE);
-                ctx.lineTo(COLS * GRID_SIZE, GAME_Y_OFFSET + j * GRID_SIZE);
+                ctx.moveTo(GAME_X_OFFSET, GAME_Y_OFFSET + j * GRID_SIZE);
+                ctx.lineTo(GAME_X_OFFSET + gridWidth, GAME_Y_OFFSET + j * GRID_SIZE);
                 ctx.stroke();
             }
 
-            // 可选细节：在交叉点画极其微小的装饰点，提升高级感
-            ctx.fillStyle = "rgba(107, 94, 94, 0.3)";
+            // D. 核心补全：网格连接处的精致圆点 (所有交叉点)
+            ctx.fillStyle = "rgba(107, 94, 94, 0.1)";
             for(let i = 0; i <= COLS; i++) {
                 for(let j = 0; j <= ROWS; j++) {
                     ctx.beginPath();
-                    ctx.arc(i * GRID_SIZE, GAME_Y_OFFSET + j * GRID_SIZE, 1, 0, Math.PI * 2);
+                    // 在每一个横竖线交叉坐标点画一个小圆点
+                    ctx.arc(GAME_X_OFFSET + i * GRID_SIZE, GAME_Y_OFFSET + j * GRID_SIZE, 1.2, 0, Math.PI * 2);
                     ctx.fill();
                 }
             }
+
+            // E. 装饰：四个角强化 (类似取景框，更有设计感)
+            ctx.strokeStyle = "#D99FA9";
+            ctx.lineWidth = 3;
+            const cornerSize = 15;
+            // 左上角
+            ctx.beginPath(); ctx.moveTo(GAME_X_OFFSET, GAME_Y_OFFSET + cornerSize); ctx.lineTo(GAME_X_OFFSET, GAME_Y_OFFSET); ctx.lineTo(GAME_X_OFFSET + cornerSize, GAME_Y_OFFSET); ctx.stroke();
+            // 右上角
+            ctx.beginPath(); ctx.moveTo(GAME_X_OFFSET + gridWidth - cornerSize, GAME_Y_OFFSET); ctx.lineTo(GAME_X_OFFSET + gridWidth, GAME_Y_OFFSET); ctx.lineTo(GAME_X_OFFSET + gridWidth, GAME_Y_OFFSET + cornerSize); ctx.stroke();
+            // 左下角
+            ctx.beginPath(); ctx.moveTo(GAME_X_OFFSET, GAME_Y_OFFSET + gridHeight - cornerSize); ctx.lineTo(GAME_X_OFFSET, GAME_Y_OFFSET + gridHeight); ctx.lineTo(GAME_X_OFFSET + cornerSize, GAME_Y_OFFSET + gridHeight); ctx.stroke();
+            // 右下角
+            ctx.beginPath(); ctx.moveTo(GAME_X_OFFSET + gridWidth - cornerSize, GAME_Y_OFFSET + gridHeight); ctx.lineTo(GAME_X_OFFSET + gridWidth, GAME_Y_OFFSET + gridHeight); ctx.lineTo(GAME_X_OFFSET + gridWidth, GAME_Y_OFFSET + gridHeight - cornerSize); ctx.stroke();
 
             // --- 3. 绘制极致Q弹：S型波浪呼吸蛇身 ---
             const time = Date.now() / 250; // 动画速度因子
@@ -267,7 +299,8 @@
                 const s = snake[i];
                 
                 // 1. 基础中心坐标
-                const baseX = s.x * GRID_SIZE + GRID_SIZE / 2;
+                // --- 修复核心：baseX 必须加上 GAME_X_OFFSET ---
+                const baseX = GAME_X_OFFSET + s.x * GRID_SIZE + GRID_SIZE / 2;
                 const baseY = s.y * GRID_SIZE + GAME_Y_OFFSET + GRID_SIZE / 2;
 
                 // 2. S型扭动逻辑：只在垂直于行进方向的轴上做波浪位移
@@ -347,10 +380,9 @@
                 ctx.restore();
             }
 
-            // 4. 食物 (完美居中)
-            ctx.font = "20px Arial";
-            ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.fillText(food.type, food.x * GRID_SIZE + GRID_SIZE/2, food.y * GRID_SIZE + GAME_Y_OFFSET + GRID_SIZE/2);
+            // 4. 食物
+            ctx.font = "28px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(food.type, GAME_X_OFFSET + food.x*GRID_SIZE + GRID_SIZE/2, food.y*GRID_SIZE + GAME_Y_OFFSET + GRID_SIZE/2);
 
             // 5. 底部按钮
             ctx.textBaseline = "alphabetic";
