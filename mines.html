@@ -258,22 +258,48 @@
                 for(let x=0; x<COLS; x++) drawCell(x, y);
             }
 
-            // 4. 工具栏
+            // --- 替换 4. 绘制底部工具栏 部分 ---
             ctx.textBaseline = "alphabetic";
             for(let k in uiBtns) {
-                let btn = uiBtns[k]; ctx.save();
-                let active = (currentTool === k && !btn.isReset);
-                ctx.fillStyle = active ? "rgba(217, 159, 169, 0.9)" : "rgba(255,255,255,0.7)";
-                ctx.strokeStyle = "white"; ctx.lineWidth = 4;
-                drawRoundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 20); ctx.stroke();
+                let btn = uiBtns[k]; 
+                ctx.save();
                 
+                // 判断当前工具是否被选中 (重开按钮除外)
+                let isActive = (currentTool === k && !btn.isReset);
+
+                // A. 绘制背景底色 (始终保持半透明白，不再变色)
+                ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+                drawRoundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 20);
+                ctx.fill();
+
+                // B. 核心修改：绘制边框逻辑
+                if (isActive) {
+                    // 选中状态：使用加粗的莫兰迪粉色边框
+                    ctx.strokeStyle = "#D99FA9"; 
+                    ctx.lineWidth = 5; // 边框加粗，显得有质感
+                } else {
+                    // 未选中状态：使用普通细白色边框
+                    ctx.strokeStyle = "white"; 
+                    ctx.lineWidth = 2;
+                }
+                ctx.stroke();
+
+                // C. 绘制图标 (如果选中，图标也可以变色以增强反馈)
                 if (btn.img.complete) {
-                    if (active) ctx.filter = 'brightness(0) invert(1)'; else ctx.globalAlpha = 0.6;
+                    // 如果选中，给图标加一个莫兰迪粉的滤镜（可选）
+                    // 若不需要变色，去掉下面这一行即可
+                    if (isActive) ctx.filter = 'sepia(1) saturate(5) hue-rotate(-50deg)'; 
+                    
+                    ctx.globalAlpha = isActive ? 1.0 : 0.6;
                     ctx.drawImage(btn.img, btn.x + (btn.w-24)/2, btn.y + 12, 24, 24);
                 }
-                ctx.fillStyle = active ? "white" : "#6B5E5E";
+
+                // D. 绘制文字 (选中时文字变深/变色)
+                ctx.fillStyle = isActive ? "#D99FA9" : "#6B5E5E";
                 ctx.font = "bold 12px Arial";
+                ctx.textAlign = "center";
                 ctx.fillText(btn.label, btn.x + btn.w/2, btn.y + 55);
+                
                 ctx.restore();
             }
         }
