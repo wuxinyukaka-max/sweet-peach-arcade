@@ -146,11 +146,35 @@
         const RAINBOW_COLORS = ['#A1B5D0', '#9BB7AD', '#E6D5B8', '#B4A7AF', '#C9A7AC'];
 
         const uiBtns = {
-            L: { x: 100,  y: 660, w: 45, h: 70, img: iconAssets.left,  key: {x: -1, y: 0}, color: '#9BB7AD' },
-            R: { x: 255, y: 660, w: 45, h: 70, img: iconAssets.right, key: {x: 1, y: 0},  color: '#9BB7AD' },
-            U: { x: 160, y: 610, w: 80, h: 40, img: iconAssets.up,    key: {x: 0, y: -1}, color: '#D99FA9' },
-            D: { x: 160, y: 740, w: 80, h: 40, img: iconAssets.down,  key: {x: 0, y: 1},  color: '#9BB7AD' }
+            L: { x: 100,  y: 680, w: 60, h: 50, img: iconAssets.left,  key: {x: -1, y: 0}, color: '#9BB7AD' },
+            R: { x: 245, y: 680, w: 60, h: 50, img: iconAssets.right, key: {x: 1, y: 0},  color: '#9BB7AD' },
+            U: { x: 170, y: 620, w: 60, h: 50, img: iconAssets.up,    key: {x: 0, y: -1}, color: '#D99FA9' },
+            D: { x: 170, y: 680, w: 60, h: 50, img: iconAssets.down,  key: {x: 0, y: 1},  color: '#9BB7AD' }
         };
+
+        // --- 新增：摇杆状态管理 ---
+const joystick = {
+    baseX: 200,    // 摇杆中心 X
+    baseY: 680,    // 摇杆中心 Y
+    baseR: 50,     // 摇杆底座半径
+    stickX: 200,   // 操纵杆当前 X
+    stickY: 680,   // 操纵杆当前 Y
+    stickR: 25,    // 操纵杆球体半径
+    active: false, // 是否正在拖拽
+    maxLen: 40     // 最大拉动距离
+};
+
+// --- 1. 新增：控制模式总开关 ---
+let controlMode = 'button'; // 默认为按钮模式，切换后变为 'joystick'
+
+// 定义开关组件在画布上的位置 (放在控制区左侧)
+const toggleUI = {
+    x: 25,          // 距离左边
+    y: 620,         // 放在游戏区下方，按键区上方
+    w: 60,          // 宽度
+    h: 30,          // 高度
+    knobR: 12       // 滑块圆点半径
+};
 
         function init() {
             snake = [{x: 8, y: 12}, {x: 8, y: 13}, {x: 8, y: 14}];
@@ -160,17 +184,7 @@
             requestAnimationFrame(loop);
         }
 
-        // --- 新增：摇杆状态管理 ---
-const joystick = {
-    baseX: 200,    // 摇杆中心 X
-    baseY: 695,    // 摇杆中心 Y
-    baseR: 40,     // 摇杆底座半径
-    stickX: 200,   // 操纵杆当前 X
-    stickY: 695,   // 操纵杆当前 Y
-    stickR: 20,    // 操纵杆球体半径
-    active: false, // 是否正在拖拽
-    maxLen: 25     // 最大拉动距离
-};
+        
 
         function spawnFood() {
             const x = Math.floor(Math.random() * COLS);
@@ -193,22 +207,35 @@ canvas.addEventListener('pointerdown', (e) => {
     if (isGameOver) return;
     const pos = getTouchPos(e);
 
-    // 1. 检测按钮点击
-    for (let k in uiBtns) {
-        let btn = uiBtns[k];
-        if (pos.x > btn.x && pos.x < btn.x + btn.w && pos.y > btn.y && pos.y < btn.y + btn.h) {
-            btn.active = true;
-            if (!(btn.key.x === -dir.x && btn.key.y === -dir.y)) {
-                dir = btn.key; CandyAudio.play('click');
-            }
-        }
+    // --- A. 开关点击判定 ---
+    if (pos.x > toggleUI.x && pos.x < toggleUI.x + toggleUI.w &&
+        pos.y > toggleUI.y && pos.y < toggleUI.y + toggleUI.h) {
+        
+        controlMode = (controlMode === 'button' ? 'joystick' : 'button');
+        CandyAudio.play('click');
+        draw(); 
+        return; // 点击开关后直接返回，不触发蛇移动
     }
 
-    // 2. 检测摇杆点击 (判断点击点是否在摇杆底座范围内)
-    const dist = Math.hypot(pos.x - joystick.baseX, pos.y - joystick.baseY);
-    if (dist < joystick.baseR + 20) {
-        joystick.active = true;
-        updateJoystick(pos.x, pos.y);
+    // --- B. 互斥逻辑：根据模式决定响应哪种操作 ---
+    if (controlMode === 'button') {
+        // --- 只有在按钮模式下，才运行原本的按钮点击检测 ---
+        for (let k in uiBtns) {
+            let btn = uiBtns[k];
+            if (pos.x > btn.x && pos.x < btn.x + btn.w && pos.y > btn.y && pos.y < btn.y + btn.h) {
+                btn.active = true;
+                if (!(btn.key.x === -dir.x && btn.key.y === -dir.y)) {
+                    dir = btn.key; CandyAudio.play('click');
+                }
+            }
+        }
+    } else {
+        // --- 只有在摇杆模式下，才运行原本的摇杆激活逻辑 ---
+        const d = Math.hypot(pos.x - joystick.baseX, pos.y - joystick.baseY);
+        if (d < joystick.baseR + 20) {
+            joystick.active = true;
+            handleMove(e.clientX || (e.touches && e.touches[0].clientX), e.clientY || (e.touches && e.touches[0].clientY));
+        }
     }
     draw();
 });
@@ -452,6 +479,36 @@ function updateJoystick(targetX, targetY) {
             ctx.font = "28px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText(food.type, GAME_X_OFFSET + food.x*GRID_SIZE + GRID_SIZE/2, food.y*GRID_SIZE + GAME_Y_OFFSET + GRID_SIZE/2);
 
+            
+
+            // --- 5. 绘制糖果模式开关 (一亮一灭的视觉核心) ---
+    ctx.save();
+    // 绘制开关背景槽 (莫兰迪绿/粉切换)
+    ctx.fillStyle = controlMode === 'button' ? "rgba(155, 183, 173, 0.4)" : "rgba(217, 159, 169, 0.4)";
+    drawRoundedRect(ctx, toggleUI.x, toggleUI.y, toggleUI.w, toggleUI.h, toggleUI.h/2);
+    ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+    
+    // 绘制滑块 (左/右滑动效果)
+    const knobX = controlMode === 'button' ? toggleUI.x + 15 : toggleUI.x + toggleUI.w - 15;
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(knobX, toggleUI.y + toggleUI.h/2, toggleUI.knobR, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 模式文字说明 (小巧精致)
+    ctx.fillStyle = "#6B5E5E"; ctx.font = "bold 12px Arial"; ctx.textAlign = "center";
+    ctx.fillText(controlMode === 'button' ? "按键模式" : "摇杆模式", toggleUI.x + toggleUI.w/2, toggleUI.y + toggleUI.h + 15);
+    ctx.restore();
+
+    // --- 6. 核心互斥显示：只渲染选中的控制器 ---
+    if (controlMode === 'button') {
+        // 【绘制按钮的代码块】
+        ctx.textBaseline = "alphabetic";
+        for (let k in uiBtns) {
+            let btn = uiBtns[k];
+            // ... (你原来的绘制按钮的代码：ctx.save() 到 ctx.restore()) ...
+
+
             // 5. 底部按钮
             ctx.textBaseline = "alphabetic";
             for (let b in uiBtns) {
@@ -470,9 +527,12 @@ function updateJoystick(targetX, targetY) {
                 }
                 ctx.restore();
             }
+        }
+    } 
+    else if (controlMode === 'joystick') {
+        // 【绘制摇杆的代码块】
+        // ... (你原来的绘制摇杆底座和球的代码：ctx.save() 到 ctx.restore()) ...
 
-            // --- 在 draw() 函数末尾，绘制完按钮后添加 ---
-        
         // 绘制摇杆底座 (薄荷绿半透明)
         ctx.save();
         ctx.setLineDash([]); // 确保不受背景虚线影响
@@ -498,6 +558,12 @@ function updateJoystick(targetX, targetY) {
         ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
         ctx.stroke();
         ctx.restore();
+    }
+
+            // --- 在 draw() 函数末尾，绘制完按钮后添加 ---
+        
+        
+
         }
 
         function drawRoundedRect(ctx, x, y, w, h, r) {

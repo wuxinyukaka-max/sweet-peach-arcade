@@ -149,11 +149,28 @@
         const MOVE_INTERVAL = 95;
 
         const uiBtns = {
-            L: { x: 65,  y: 670, w: 80, h: 70, img: iconAssets.left,  move: {x: -1, y: 0}, color: '#9BB7AD' },
-            R: { x: 255, y: 670, w: 80, h: 70, img: iconAssets.right, move: {x: 1, y: 0},  color: '#9BB7AD' },
-            U: { x: 160, y: 650, w: 80, h: 50, img: iconAssets.up,    move: {x: 0, y: -1}, color: '#D99FA9' },
-            D: { x: 160, y: 710, w: 80, h: 50, img: iconAssets.down,  move: {x: 0, y: 1},  color: '#9BB7AD' }
+            L: { x: 100,  y: 710, w: 60, h: 50, img: iconAssets.left,  move: {x: -1, y: 0}, color: '#9BB7AD' },
+            R: { x: 245, y: 710, w: 60, h: 50, img: iconAssets.right, move: {x: 1, y: 0},  color: '#9BB7AD' },
+            U: { x: 170, y: 650, w: 60, h: 50, img: iconAssets.up,    move: {x: 0, y: -1}, color: '#D99FA9' },
+            D: { x: 170, y: 710, w: 60, h: 50, img: iconAssets.down,  move: {x: 0, y: 1},  color: '#9BB7AD' }
         };
+
+        const joystick = {
+            baseX: 200, baseY: 700, baseR: 50,
+            stickX: 200, stickY: 700, stickR: 25,
+            active: false, maxLen: 40
+        };
+
+        // --- 1. 新增：控制模式管理 ---
+let controlMode = 'button'; // 默认为按钮模式
+
+const toggleUI = {
+    x: 25,          // 距离左边 35px
+    y: 650,         // 放在游戏区和控制按钮之间
+    w: 60,          // 开关总宽
+    h: 30,          // 开关总高
+    knobR: 12       // 圆形滑块半径
+};
 
         function init() {
             if (animationId) cancelAnimationFrame(animationId);
@@ -234,14 +251,80 @@
             e.preventDefault(); CandyAudio.init();
             if (isGameOver) return;
             const pos = getTouchPos(e);
-            for (let k in uiBtns) {
-                let btn = uiBtns[k];
-                if (pos.x > btn.x && pos.x < btn.x + btn.w && pos.y > btn.y && pos.y < btn.y + btn.h) {
-                    btn.active = true; activeMoveDir = btn.move; CandyAudio.play('click');
+
+            // --- A. 检测模式开关点击 ---
+            if (pos.x > toggleUI.x && pos.x < toggleUI.x + toggleUI.w &&
+                pos.y > toggleUI.y && pos.y < toggleUI.y + toggleUI.h) {
+                controlMode = (controlMode === 'button' ? 'joystick' : 'button');
+                // 切换模式时停止所有移动，防止误走
+                activeMoveDir = null;
+                for (let k in uiBtns) uiBtns[k].active = false;
+                CandyAudio.play('click');
+                draw();
+                return; 
+            }
+
+            // --- B. 分模式处理操作 ---
+            if (controlMode === 'button') {
+                // 只有按钮模式下响应 L/R/U/D 点击
+                for (let k in uiBtns) {
+                    let btn = uiBtns[k];
+                    if (pos.x > btn.x && pos.x < btn.x + btn.w && pos.y > btn.y && pos.y < btn.y + btn.h) {
+                        btn.active = true;
+                        activeMoveDir = btn.move; // 触发连续移动逻辑
+                        CandyAudio.play('click');
+                    }
+                }
+            } else {
+                // 只有摇杆模式下响应摇杆点击
+                const d = Math.hypot(pos.x - joystick.baseX, pos.y - joystick.baseY);
+                if (d < joystick.baseR + 20) {
+                    joystick.active = true;
+                    updateJoystick(pos.x, pos.y);
+                    if (dist > 15) {
+    if (Math.abs(dx) > Math.abs(dy)) activeMoveDir = {x: dx > 0 ? 1 : -1, y: 0};
+    else activeMoveDir = {x: 0, y: dy > 0 ? 1 : -1};
+} else {
+    activeMoveDir = null; // 回到死区停止移动
+}
                 }
             }
+            draw();
         });
-        window.addEventListener('pointerup', () => { for (let k in uiBtns) uiBtns[k].active = false; activeMoveDir = null; });
+
+        window.addEventListener('pointermove', (e) => {
+            if (isGameOver || !joystick.active) return;
+            const pos = getTouchPos(e);
+            updateJoystick(pos.x, pos.y);
+            if (dist > 15) {
+    if (Math.abs(dx) > Math.abs(dy)) activeMoveDir = {x: dx > 0 ? 1 : -1, y: 0};
+    else activeMoveDir = {x: 0, y: dy > 0 ? 1 : -1};
+} else {
+    activeMoveDir = null; // 回到死区停止移动
+}
+        });
+
+        window.addEventListener('pointerup', () => { 
+            for (let k in uiBtns) uiBtns[k].active = false; 
+            activeMoveDir = null; 
+            joystick.active = false;
+            joystick.stickX = joystick.baseX; joystick.stickY = joystick.baseY;
+        });
+
+        function updateJoystick(tx, ty) {
+            const dx = tx - joystick.baseX, dy = ty - joystick.baseY;
+            const d = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+            const m = Math.min(d, joystick.maxLen);
+            joystick.stickX = joystick.baseX + Math.cos(a) * m;
+            joystick.stickY = joystick.baseY + Math.sin(a) * m;
+
+            if (d > 15) {
+                if (Math.abs(dx) > Math.abs(dy)) activeMoveDir = {x: dx > 0 ? 1 : -1, y: 0};
+                else activeMoveDir = {x: 0, y: dy > 0 ? 1 : -1};
+            } else {
+                activeMoveDir = null;
+            }
+        }
 
         function loop(t) {
             if (isGameOver) return;
@@ -337,7 +420,63 @@
                 ctx.fillStyle = "#8a515b"; ctx.font = "bold 18px Quicksand, Arial"; ctx.textAlign = "center";
                 ctx.fillText(messageTip.text, charX, charY - 40 - (50 - messageTip.timer)); messageTip.timer--;
             }
-            drawUI();
+            ctx.fillStyle = "rgba(255,255,255,0.9)"; drawRoundedRect(ctx, 110, 15, 180, 45, 22.5);
+            ctx.fillStyle = timeLeft < 10 ? "#FF85A1" : "#9BB7AD";
+            ctx.font = "bold 18px Quicksand, Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(`剩余时间: ${timeLeft}s`, 200, 40);
+            
+// --- 5. 绘制胶囊滑块开关 (莫兰迪风格) ---
+            ctx.save();
+            const isBtn = (controlMode === 'button');
+            // 背景槽色：按钮绿/摇杆粉
+            ctx.fillStyle = isBtn ? "rgba(155, 183, 173, 0.4)" : "rgba(217, 159, 169, 0.4)";
+            drawRoundedRect(ctx, toggleUI.x, toggleUI.y, toggleUI.w, toggleUI.h, toggleUI.h/2);
+            ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+            
+            // 绘制白色滑块
+            const knobX = isBtn ? toggleUI.x + 15 : toggleUI.x + toggleUI.w - 15;
+            ctx.fillStyle = "white";
+            ctx.beginPath();
+            ctx.arc(knobX, toggleUI.y + toggleUI.h/2, toggleUI.knobR, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 模式提示字
+            ctx.fillStyle = "#6B5E5E"; ctx.font = "bold 11px Arial"; ctx.textAlign = "center";
+            ctx.fillText(isBtn ? "按键模式" : "摇杆模式", toggleUI.x + toggleUI.w/2, toggleUI.y + toggleUI.h + 12);
+            ctx.restore();
+
+            // --- 6. 互斥绘制：只渲染选中的控制器 ---
+            if (controlMode === 'button') {
+                // 绘制一排按钮 (L, R, U, D)
+                ctx.textBaseline = "alphabetic";
+                for (let k in uiBtns) {
+                    let btn = uiBtns[k]; ctx.save();
+                    ctx.fillStyle = btn.active ? "rgba(217, 159, 169, 0.9)" : "rgba(255,255,255,0.7)";
+                    ctx.strokeStyle = "white"; ctx.lineWidth = 4;
+                    drawRoundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 20); ctx.stroke();
+                    if (btn.img.complete && btn.img.naturalWidth !== 0) {
+                        const s = 28; if(btn.active) ctx.filter = 'brightness(0) invert(1)'; else ctx.globalAlpha = 0.6;
+                        ctx.drawImage(btn.img, btn.x + (btn.w-s)/2, btn.y + (btn.h-s)/2, s, s);
+                    }
+                    ctx.restore();
+                }
+            } else {
+                // 绘制半透明摇杆
+                ctx.save();
+                // 底座
+                ctx.beginPath(); ctx.arc(joystick.baseX, joystick.baseY, joystick.baseR, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(155, 183, 173, 0.35)"; ctx.fill();
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.5)"; ctx.lineWidth = 4; ctx.stroke();
+                // 杆头
+                ctx.beginPath(); ctx.arc(joystick.stickX, joystick.stickY, joystick.stickR, 0, Math.PI * 2);
+                const g = ctx.createRadialGradient(joystick.stickX-5, joystick.stickY-5, 0, joystick.stickX, joystick.stickY, joystick.stickR);
+                g.addColorStop(0, "rgba(217, 159, 169, 0.9)"); g.addColorStop(1, "rgba(217, 159, 169, 0.6)");
+                ctx.fillStyle = g; ctx.fill();
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.8)"; ctx.stroke();
+                ctx.restore();
+            }
+
+            drawUI() 
         }
 
         function drawExitPortal(ctx, x, y) {
@@ -349,21 +488,7 @@
         }
 
         function drawUI() {
-            ctx.fillStyle = "rgba(255,255,255,0.9)"; drawRoundedRect(ctx, 110, 20, 180, 45, 22.5);
-            ctx.fillStyle = timeLeft < 10 ? "#FF85A1" : "#9BB7AD";
-            ctx.font = "bold 18px Quicksand, Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.fillText(`剩余时间: ${timeLeft}s`, 200, 43);
-            for (let k in uiBtns) {
-                let btn = uiBtns[k]; ctx.save();
-                ctx.fillStyle = btn.active ? "rgba(217, 159, 169, 0.9)" : "rgba(255,255,255,0.7)";
-                ctx.strokeStyle = "white"; ctx.lineWidth = 4;
-                drawRoundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 20); ctx.stroke();
-                if (btn.img.complete && btn.img.naturalWidth !== 0) {
-                    const s = 28; if(btn.active) ctx.filter = 'brightness(0) invert(1)'; else ctx.globalAlpha = 0.6;
-                    ctx.drawImage(btn.img, btn.x + (btn.w-s)/2, btn.y + (btn.h-s)/2, s, s);
-                }
-                ctx.restore();
-            }
+            
         }
 
         function endGame(win) {
