@@ -137,7 +137,7 @@
         const COLS = 13;      // 13 * 28 = 364px
         const ROWS = 18;      // 18 * 28 = 504px
         const GAME_X_OFFSET = (400 - COLS * GRID_SIZE) / 2; // 结果为 18px
-        const GAME_Y_OFFSET = 100; // 适当下移，给顶部留位
+        const GAME_Y_OFFSET = 90; // 适当下移，给顶部留位
 
         let snake, dir, food, score, isGameOver, lastTick = 0, rippleDecors = [];
         const SWEETS = ['🍮', '🍯', '🍪', '🍧', '🍦', '🍩', '🧁', '🍭'];
@@ -146,10 +146,10 @@
         const RAINBOW_COLORS = ['#A1B5D0', '#9BB7AD', '#E6D5B8', '#B4A7AF', '#C9A7AC'];
 
         const uiBtns = {
-            L: { x: 65,  y: 670, w: 80, h: 70, img: iconAssets.left,  key: {x: -1, y: 0}, color: '#9BB7AD' },
-            R: { x: 255, y: 670, w: 80, h: 70, img: iconAssets.right, key: {x: 1, y: 0},  color: '#9BB7AD' },
-            U: { x: 160, y: 650, w: 80, h: 50, img: iconAssets.up,    key: {x: 0, y: -1}, color: '#D99FA9' },
-            D: { x: 160, y: 710, w: 80, h: 50, img: iconAssets.down,  key: {x: 0, y: 1},  color: '#9BB7AD' }
+            L: { x: 100,  y: 660, w: 45, h: 70, img: iconAssets.left,  key: {x: -1, y: 0}, color: '#9BB7AD' },
+            R: { x: 255, y: 660, w: 45, h: 70, img: iconAssets.right, key: {x: 1, y: 0},  color: '#9BB7AD' },
+            U: { x: 160, y: 610, w: 80, h: 40, img: iconAssets.up,    key: {x: 0, y: -1}, color: '#D99FA9' },
+            D: { x: 160, y: 740, w: 80, h: 40, img: iconAssets.down,  key: {x: 0, y: 1},  color: '#9BB7AD' }
         };
 
         function init() {
@@ -159,6 +159,18 @@
             spawnFood();
             requestAnimationFrame(loop);
         }
+
+        // --- 新增：摇杆状态管理 ---
+const joystick = {
+    baseX: 200,    // 摇杆中心 X
+    baseY: 695,    // 摇杆中心 Y
+    baseR: 40,     // 摇杆底座半径
+    stickX: 200,   // 操纵杆当前 X
+    stickY: 695,   // 操纵杆当前 Y
+    stickR: 20,    // 操纵杆球体半径
+    active: false, // 是否正在拖拽
+    maxLen: 25     // 最大拉动距离
+};
 
         function spawnFood() {
             const x = Math.floor(Math.random() * COLS);
@@ -175,23 +187,79 @@
             return { x: (t.clientX - rect.left) * scaleX, y: (t.clientY - rect.top) * scaleY };
         }
 
-        canvas.addEventListener('pointerdown', (e) => {
-            e.preventDefault(); CandyAudio.init();
-            if (isGameOver) return;
-            const pos = getTouchPos(e);
-            for (let k in uiBtns) {
-                let btn = uiBtns[k];
-                if (pos.x > btn.x && pos.x < btn.x + btn.w && pos.y > btn.y && pos.y < btn.y + btn.h) {
-                    btn.active = true;
-                    if (!(btn.key.x === -dir.x && btn.key.y === -dir.y)) {
-                        dir = btn.key; CandyAudio.play('click');
-                    }
-                }
-            }
-            draw();
-        });
+        // --- 修改 pointerdown ---
+canvas.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); CandyAudio.init();
+    if (isGameOver) return;
+    const pos = getTouchPos(e);
 
-        window.addEventListener('pointerup', () => { for (let k in uiBtns) uiBtns[k].active = false; draw(); });
+    // 1. 检测按钮点击
+    for (let k in uiBtns) {
+        let btn = uiBtns[k];
+        if (pos.x > btn.x && pos.x < btn.x + btn.w && pos.y > btn.y && pos.y < btn.y + btn.h) {
+            btn.active = true;
+            if (!(btn.key.x === -dir.x && btn.key.y === -dir.y)) {
+                dir = btn.key; CandyAudio.play('click');
+            }
+        }
+    }
+
+    // 2. 检测摇杆点击 (判断点击点是否在摇杆底座范围内)
+    const dist = Math.hypot(pos.x - joystick.baseX, pos.y - joystick.baseY);
+    if (dist < joystick.baseR + 20) {
+        joystick.active = true;
+        updateJoystick(pos.x, pos.y);
+    }
+    draw();
+});
+
+// --- 新增：全局 pointermove 监听 ---
+window.addEventListener('pointermove', (e) => {
+    if (!joystick.active || isGameOver) return;
+    const pos = getTouchPos(e);
+    updateJoystick(pos.x, pos.y);
+    draw();
+});
+
+// --- 修改 pointerup ---
+window.addEventListener('pointerup', () => { 
+    for (let k in uiBtns) uiBtns[k].active = false; 
+    // 抬起时重置摇杆位置
+    joystick.active = false;
+    joystick.stickX = joystick.baseX;
+    joystick.stickY = joystick.baseY;
+    draw(); 
+});
+
+// --- 新增：摇杆逻辑计算函数 ---
+function updateJoystick(targetX, targetY) {
+    const dx = targetX - joystick.baseX;
+    const dy = targetY - joystick.baseY;
+    const dist = Math.hypot(dx, dy);
+    const angle = Math.atan2(dy, dx);
+    
+    // 限制摇杆球不超出范围
+    const moveDist = Math.min(dist, joystick.maxLen);
+    joystick.stickX = joystick.baseX + Math.cos(angle) * moveDist;
+    joystick.stickY = joystick.baseY + Math.sin(angle) * moveDist;
+
+    // 将摇杆位移转化为蛇的方向
+    if (dist > 15) { // 设定死区，防止误触
+        let newDir = { x: 0, y: 0 };
+        if (Math.abs(dx) > Math.abs(dy)) {
+            newDir = { x: dx > 0 ? 1 : -1, y: 0 };
+        } else {
+            newDir = { x: 0, y: dy > 0 ? 1 : -1 };
+        }
+        // 防止180度掉头
+        if (!(newDir.x === -dir.x && newDir.y === -dir.y)) {
+            if (dir.x !== newDir.x || dir.y !== newDir.y) {
+                dir = newDir;
+                CandyAudio.play('click');
+            }
+        }
+    }
+}
 
         function loop(t) {
             if (isGameOver) return;
@@ -402,6 +470,34 @@
                 }
                 ctx.restore();
             }
+
+            // --- 在 draw() 函数末尾，绘制完按钮后添加 ---
+        
+        // 绘制摇杆底座 (薄荷绿半透明)
+        ctx.save();
+        ctx.setLineDash([]); // 确保不受背景虚线影响
+        ctx.beginPath();
+        ctx.arc(joystick.baseX, joystick.baseY, joystick.baseR, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(155, 183, 173, 0.3)"; // 莫兰迪绿透明
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // 绘制摇杆头 (灰粉色半透明)
+        ctx.beginPath();
+        ctx.arc(joystick.stickX, joystick.stickY, joystick.stickR, 0, Math.PI * 2);
+        const stickGrad = ctx.createRadialGradient(
+            joystick.stickX - 5, joystick.stickY - 5, 0,
+            joystick.stickX, joystick.stickY, joystick.stickR
+        );
+        stickGrad.addColorStop(0, "rgba(217, 159, 169, 0.9)"); // 亮色
+        stickGrad.addColorStop(1, "rgba(217, 159, 169, 0.6)"); // 边框深色
+        ctx.fillStyle = stickGrad;
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+        ctx.stroke();
+        ctx.restore();
         }
 
         function drawRoundedRect(ctx, x, y, w, h, r) {
