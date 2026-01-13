@@ -497,7 +497,7 @@ function updateJoystick(targetX, targetY) {
     
     // 模式文字说明 (小巧精致)
     ctx.fillStyle = "#6B5E5E"; ctx.font = "bold 12px Arial"; ctx.textAlign = "center";
-    ctx.fillText(controlMode === 'button' ? "按键模式" : "摇杆模式", toggleUI.x + toggleUI.w/2, toggleUI.y + toggleUI.h + 15);
+    ctx.fillText(controlMode === 'button' ? "切换摇杆" : "切换按键", toggleUI.x + toggleUI.w/2, toggleUI.y + toggleUI.h + 15);
     ctx.restore();
 
     // --- 6. 核心互斥显示：只渲染选中的控制器 ---

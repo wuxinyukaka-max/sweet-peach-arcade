@@ -45,15 +45,19 @@ body, html {
 }
 
 canvas { 
+    /* 1. 核心清晰度指令：告诉浏览器不要使用模糊滤镜 */
+    image-rendering: -webkit-optimize-contrast; /* Safari/Chrome 极致清晰 */
+    image-rendering: crisp-edges;               /* 标准浏览器 */
+    
     border: none !important;
     border-radius: 35px; 
     background-color: var(--bg-canvas); 
     box-shadow: none !important; 
-    /* 竖屏核心限制：宽度最大占95%，高度留出控制器的空间 */
-    max-width: vw;
-    max-height: 60vh; 
-    width: auto;
+     /* 视觉显示大小依然保持在 400px 左右，这样像素密度就翻倍了 */
+    width: 95vw; 
+    max-width: 400px; 
     height: auto;
+    border: none;
     display: block;
 }
 

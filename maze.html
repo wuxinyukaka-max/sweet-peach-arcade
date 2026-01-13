@@ -23,7 +23,7 @@
             border-radius: 40px;
             box-shadow: none !important;
             max-width: 95vw;
-            max-height: 92vh;
+            max-height: auto;
             width: auto; height: auto;
             display: block;
         }
@@ -442,7 +442,7 @@ const toggleUI = {
             
             // 模式提示字
             ctx.fillStyle = "#6B5E5E"; ctx.font = "bold 11px Arial"; ctx.textAlign = "center";
-            ctx.fillText(isBtn ? "按键模式" : "摇杆模式", toggleUI.x + toggleUI.w/2, toggleUI.y + toggleUI.h + 12);
+            ctx.fillText(isBtn ? "切换摇杆" : "切换按键", toggleUI.x + toggleUI.w/2, toggleUI.y + toggleUI.h + 12);
             ctx.restore();
 
             // --- 6. 互斥绘制：只渲染选中的控制器 ---
