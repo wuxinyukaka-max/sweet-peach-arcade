@@ -46,8 +46,8 @@
     <a href="index.html" class="back-home" id="back-link">🏠 返回</a>
 
     <div id="game-container">
-        <!-- 400x800 一体化比例 -->
-        <canvas id="gameCanvas" width="400" height="800"></canvas>
+        <!-- 800x1600 一体化比例 -->
+        <canvas id="gameCanvas" width="800" height="1600"></canvas>
     </div>
 
     <!-- 弹窗 -->
@@ -85,17 +85,20 @@
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const modal = document.getElementById('over-modal');
 
-        const COLS = 10, ROWS = 17, BLOCK = 34; 
-        const GRID_X_START = (400 - COLS * BLOCK) / 2; 
-        const GAME_Y_OFFSET = 90; 
+        // --- 核心配置：高清换算版 ---
+        const COLS = 10, ROWS = 17; 
+        const BLOCK = 68;              // 34 * 2
+        const GRID_X_START = (800 - COLS * BLOCK) / 2; // (800 - 680) / 2 = 60px
+        const GAME_Y_OFFSET = 180;     // 90 * 2
 
         let grid, minesCount = 40, flagsUsed = 0, isGameOver = false, currentTool = 'dig', isFirstClick = true;
 
+        // 底部按钮坐标翻倍：x, y, w, h 全部 * 2
         const uiBtns = {
-            dig:   { x: 25,  y: 710, w: 80, h: 70, img: iconAssets.shovel, label: '铲开', color: '#9BB7AD' },
-            flag:  { x: 115, y: 710, w: 80, h: 70, img: iconAssets.flag,   label: '插旗', color: '#D99FA9' },
-            ask:   { x: 205, y: 710, w: 80, h: 70, img: iconAssets.ask,    label: '存疑', color: '#A1B5D0' },
-            reset: { x: 295, y: 710, w: 80, h: 70, img: iconAssets.reset,  label: '重开', color: '#E6D5B8', isReset: true }
+            dig:   { x: 50,  y: 1420, w: 160, h: 140, img: iconAssets.shovel, label: '铲开', color: '#9BB7AD' },
+            flag:  { x: 230, y: 1420, w: 160, h: 140, img: iconAssets.flag,   label: '插旗', color: '#D99FA9' },
+            ask:   { x: 410, y: 1420, w: 160, h: 140, img: iconAssets.ask,    label: '存疑', color: '#A1B5D0' },
+            reset: { x: 590, y: 1420, w: 140, h: 140, img: iconAssets.reset,  label: '重开', color: '#E6D5B8', isReset: true }
         };
 
         function init() {
@@ -238,21 +241,45 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = "#F4F1F0"; ctx.fillRect(0,0,400,800);
 
-            // 1. HUD
-            ctx.fillStyle = "rgba(255,255,255,0.9)";
-            drawRoundedRect(ctx, 110, 25, 180, 45, 22.5);
-            ctx.fillStyle = "#efcdce"; ctx.font = "bold 16px Quicksand, Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.fillText(`🚩 剩余雷数: ${Math.max(0, minesCount - flagsUsed)}`, 200, 48);
+            // --- 1. 顶部 HUD 绘制 (800x1600 高清对齐版) ---
 
-            // 2. 托盘
-            ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-            drawRoundedRect(ctx, GRID_X_START - 10, GAME_Y_OFFSET - 10, (COLS * BLOCK) + 20, (ROWS * BLOCK) + 20, 25);
+// A. 定义底框参数 (我们让它在 800 宽度的画布里绝对居中)
+const hudW = 360;  // 宽度 (原180 * 2)
+const hudH = 90;   // 高度 (原45 * 2)
+const hudX = (800 - hudW) / 2; // 计算 X 坐标使其居中: (800-360)/2 = 220
+const hudY = 50;   // 距离顶部 50px (原25 * 2)
+
+// B. 绘制底框
+ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+// 圆角半径设为高度的一半 (45)，这样它就是一个完美的胶囊形状
+drawRoundedRect(ctx, hudX, hudY, hudW, hudH, 45); 
+ctx.fill();
+
+// C. 绘制文字 (核心对齐逻辑)
+ctx.fillStyle = "#D99FA9";
+ctx.font = "bold 32px Quicksand, Arial"; // 字号翻倍
+
+// 关键设置：这三行决定了字是否在指定坐标的中心
+ctx.textAlign = "center";    // 水平对齐：中心
+ctx.textBaseline = "middle"; // 垂直对齐：中心
+
+// 计算文字的中心坐标点
+const centerX = hudX + hudW / 2; // 应该是 400
+const centerY = hudY + hudH / 2; // 50 + 45 = 95
+
+// 绘制文字
+// 注意：如果觉得字视觉上还是偏上了一点点，可以在 centerY 后面 + 4 (视觉修正)
+ctx.fillText(`剩余炸弹: ${Math.max(0, minesCount - flagsUsed)}`, centerX, centerY);
+
+        // 2. 游戏区域托盘 (间距 10*2=20, 圆角 25*2=50)
+        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+        drawRoundedRect(ctx, GRID_X_START - 20, GAME_Y_OFFSET - 20, (COLS * BLOCK) + 40, (ROWS * BLOCK) + 40, 50);
 
             for(let y=0; y<ROWS; y++) {
                 for(let x=0; x<COLS; x++) drawCell(x, y);
             }
 
-            // --- 替换 4. 绘制底部工具栏 部分 ---
+            // --- 4. 绘制底部工具栏 部分 (800x1600 高清换算版) ---
             ctx.textBaseline = "alphabetic";
             for(let k in uiBtns) {
                 let btn = uiBtns[k]; 
@@ -261,60 +288,94 @@
                 // 判断当前工具是否被选中 (重开按钮除外)
                 let isActive = (currentTool === k && !btn.isReset);
 
-                // A. 绘制背景底色 (始终保持半透明白，不再变色)
+                // A. 绘制背景底色 (始终保持半透明白)
                 ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-                drawRoundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 20);
+                // 圆角从 20 翻倍到 40
+                drawRoundedRect(ctx, btn.x, btn.y, btn.w, btn.h, 40);
                 ctx.fill();
 
                 // B. 核心修改：绘制边框逻辑
                 if (isActive) {
                     // 选中状态：使用加粗的莫兰迪粉色边框
                     ctx.strokeStyle = "#D99FA9"; 
-                    ctx.lineWidth = 5; // 边框加粗，显得有质感
+                    ctx.lineWidth = 4; // 线宽从 2 翻倍到 4，显得更有质感
                 } else {
                     // 未选中状态：使用普通细白色边框
                     ctx.strokeStyle = "white"; 
-                    ctx.lineWidth = 2;
+                    ctx.lineWidth = 2; // 这里建议维持 2，产生精细感对比
                 }
                 ctx.stroke();
 
-                // C. 绘制图标 (如果选中，图标也可以变色以增强反馈)
+                // C. 绘制图标 (尺寸和偏移翻倍)
                 if (btn.img.complete) {
-                    // 如果选中，给图标加一个莫兰迪粉的滤镜（可选）
-                    // 若不需要变色，去掉下面这一行即可
+                    const iconSize = 48; // 图标大小从 24 翻倍到 48
+                    const iconYOffset = 24; // Y轴偏移从 12 翻倍到 24
+
                     if (isActive) ctx.filter = 'sepia(1) saturate(5) hue-rotate(-50deg)'; 
                     
                     ctx.globalAlpha = isActive ? 1.0 : 0.6;
-                    ctx.drawImage(btn.img, btn.x + (btn.w-24)/2, btn.y + 12, 24, 24);
+                    ctx.drawImage(
+                        btn.img, 
+                        btn.x + (btn.w - iconSize) / 2, 
+                        btn.y + iconYOffset, 
+                        iconSize, 
+                        iconSize
+                    );
                 }
 
-                // D. 绘制文字 (选中时文字变深/变色)
+                // D. 绘制文字 (字号和偏移翻倍)
                 ctx.fillStyle = isActive ? "#D99FA9" : "#6B5E5E";
-                ctx.font = "bold 12px Arial";
+                ctx.font = "bold 24px Arial"; // 字号从 12px 翻倍到 24px
                 ctx.textAlign = "center";
-                ctx.fillText(btn.label, btn.x + btn.w/2, btn.y + 55);
+                // 文本Y轴位置从 55 翻倍到 110
+                ctx.fillText(btn.label, btn.x + btn.w / 2, btn.y + 110);
                 
                 ctx.restore();
             }
         }
 
         function drawCell(x, y) {
+            // 基础坐标计算 (px, py 会自动跟随全局翻倍后的 GRID_X_START 等变量)
             let cell = grid[y][x], px = GRID_X_START + x * BLOCK, py = GAME_Y_OFFSET + y * BLOCK;
+            
+            // 高清参数定义
+            const cellPadding = 4;       // 原 2 * 2
+            const cellRectSize = BLOCK - 8; // 原 BLOCK - 4
+            const borderRadius = 16;     // 原 8 * 2
+            const iconOffset = 14;       // 原 7 * 2
+            const iconSize = 40;         // 原 20 * 2
+
             if (cell.state === 'open') {
+                // 已打开状态底色
                 ctx.fillStyle = cell.isExploded ? "#FFB6C1" : "#EBE7E4";
-                drawRoundedRect(ctx, px+2, py+2, BLOCK-4, BLOCK-4, 8);
+                drawRoundedRect(ctx, px + cellPadding, py + cellPadding, cellRectSize, cellRectSize, borderRadius);
+                
                 if (cell.isMine) {
-                    if (iconAssets.mine.complete) ctx.drawImage(iconAssets.mine, px+7, py+7, 20, 20);
+                    // 绘制地雷图标
+                    if (iconAssets.mine.complete) {
+                        ctx.drawImage(iconAssets.mine, px + iconOffset, py + iconOffset, iconSize, iconSize);
+                    }
                 } else if (cell.count > 0) {
+                    // 绘制数字
                     const colors = [null, '#A1B5D0', '#9BB7AD', '#D99FA9', '#E6D5B8', '#B4A7AF', '#8D7B6D', '#6B5E5E'];
-                    ctx.fillStyle = colors[cell.count]; ctx.font = "bold 18px Arial"; ctx.textAlign="center"; ctx.textBaseline="middle";
-                    ctx.fillText(cell.count, px + BLOCK/2, py + BLOCK/2);
+                    ctx.fillStyle = colors[cell.count]; 
+                    ctx.font = "bold 36px Arial"; // 字号 18 * 2
+                    ctx.textAlign = "center"; 
+                    ctx.textBaseline = "middle";
+                    // 绘制数字，+4px 为视觉垂直居中修正
+                    ctx.fillText(cell.count, px + BLOCK / 2, py + BLOCK / 2 + 4);
                 }
             } else {
+                // 未打开状态（方块感）
                 ctx.fillStyle = "#FDFBFA";
-                drawRoundedRect(ctx, px+2, py+2, BLOCK-4, BLOCK-4, 8);
-                if (cell.state === 'flag') ctx.drawImage(iconAssets.flag, px+7, py+7, 20, 20);
-                else if (cell.state === 'ask') ctx.drawImage(iconAssets.ask, px+7, py+7, 20, 20);
+                drawRoundedRect(ctx, px + cellPadding, py + cellPadding, cellRectSize, cellRectSize, borderRadius);
+                
+                // 绘制插旗或存疑图标
+                if (cell.state === 'flag' && iconAssets.flag.complete) {
+                    ctx.drawImage(iconAssets.flag, px + iconOffset, py + iconOffset, iconSize, iconSize);
+                } else if (cell.state === 'ask' && iconAssets.ask.complete) {
+                    ctx.drawImage(iconAssets.ask, px + iconOffset, py + iconOffset, iconSize, iconSize);
+                }
             }
         }
 
