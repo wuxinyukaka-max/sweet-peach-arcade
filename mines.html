@@ -92,18 +92,18 @@
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const modal = document.getElementById('over-modal');
 
-        const COLS = 10, ROWS = 16, BLOCK = 70; // 70 * 10 = 700px 宽度
+        const COLS = 10, ROWS = 15, BLOCK = 70; // 70 * 10 = 700px 宽度
         const GRID_X_START = (800 - COLS * BLOCK) / 2; // 50px
-        const GAME_Y_OFFSET = 200; 
+        const GAME_Y_OFFSET = 240; 
 
-        let grid, minesCount = 40, flagsUsed = 0, isGameOver = false, currentTool = 'dig', isFirstClick = true;
+        let grid, minesCount = 35, flagsUsed = 0, isGameOver = false, currentTool = 'dig', isFirstClick = true;
 
         // 按钮坐标翻倍：y=1420
         const uiBtns = {
-            dig:   { x: 50,  y: 1400, w: 160, h: 140, img: iconAssets.shovel, label: '铲开', color: '#9BB7AD' },
-            flag:  { x: 230, y: 1400, w: 160, h: 140, img: iconAssets.flag,   label: '插旗', color: '#D99FA9' },
-            ask:   { x: 410, y: 1400, w: 160, h: 140, img: iconAssets.ask,    label: '存疑', color: '#A1B5D0' },
-            reset: { x: 590, y: 1400, w: 160, h: 140, img: iconAssets.reset,  label: '重开', color: '#E6D5B8', isReset: true }
+            dig:   { x: 50,  y: 1360, w: 160, h: 140, img: iconAssets.shovel, label: '铲开', color: '#9BB7AD' },
+            flag:  { x: 230, y: 1360, w: 160, h: 140, img: iconAssets.flag,   label: '插旗', color: '#D99FA9' },
+            ask:   { x: 410, y: 1360, w: 160, h: 140, img: iconAssets.ask,    label: '存疑', color: '#A1B5D0' },
+            reset: { x: 590, y: 1360, w: 160, h: 140, img: iconAssets.reset,  label: '重开', color: '#E6D5B8', isReset: true }
         };
 
         function init() {
@@ -231,10 +231,10 @@
 
             // 1. HUD (高清对齐)
             ctx.fillStyle = "rgba(255,255,255,0.9)";
-            drawRoundedRect(ctx, 220, 50, 360, 90, 45);
+            drawRoundedRect(ctx, 220, 100, 360, 90, 45);
             ctx.font = "bold 36px Quicksand, Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillStyle = "#D99FA9";
-            ctx.fillText(`剩余雷数: ${Math.max(0, minesCount - flagsUsed)}`, 400, 98);
+            ctx.fillText(`剩余雷数: ${Math.max(0, minesCount - flagsUsed)}`, 400, 148);
 
             // 2. 托盘
             ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
