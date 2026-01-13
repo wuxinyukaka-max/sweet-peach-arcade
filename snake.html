@@ -131,12 +131,6 @@
         // --- 2. 核心逻辑与UI定义 (大格子版本) ---
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const modal = document.getElementById('over-modal');
-        // --- 核心：高清适配逻辑 ---
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = 400 * dpr;
-        canvas.height = 800 * dpr;
-        ctx.scale(dpr, dpr); // 所有的画笔操作都会自动乘以 dpr
-        // -----------------------
 
         // --- 核心配置：针对 28px 的精准对齐 ---
         const GRID_SIZE = 28; 
