@@ -139,9 +139,9 @@
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const modal = document.getElementById('over-modal');
 
-        const CELL = 16, COLS = 23, ROWS = 34; 
+        const CELL = 16, COLS = 24, ROWS = 32; 
         const GAME_X_OFFSET = (400 - COLS * CELL) / 2; 
-        const GAME_Y_OFFSET = 85; 
+        const GAME_Y_OFFSET = 110; 
 
         let grid, player, exit, timeLeft, isGameOver, timerInterval, dogs, rippleDecors;
         let activeMoveDir = null, lastMoveTimestamp = 0, messageTip = { text: "", timer: 0 };
@@ -157,7 +157,7 @@
 
         const joystick = {
             baseX: 210, baseY: 710, baseR: 50,
-            stickX: 200, stickY: 710, stickR: 25,
+            stickX: 200, stickY: 710, stickR: 20,
             active: false, maxLen: 40
         };
 
@@ -420,10 +420,10 @@ const toggleUI = {
                 ctx.fillStyle = "#8a515b"; ctx.font = "bold 18px Quicksand, Arial"; ctx.textAlign = "center";
                 ctx.fillText(messageTip.text, charX, charY - 40 - (50 - messageTip.timer)); messageTip.timer--;
             }
-            ctx.fillStyle = "rgba(255,255,255,0.9)"; drawRoundedRect(ctx, 110, 15, 180, 45, 22.5);
+            ctx.fillStyle = "rgba(255,255,255,0.9)"; drawRoundedRect(ctx, 110, 45, 180, 45, 22.5);
             ctx.fillStyle = timeLeft < 10 ? "#FF85A1" : "#9BB7AD";
             ctx.font = "bold 18px Quicksand, Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.fillText(`剩余时间: ${timeLeft}s`, 200, 40);
+            ctx.fillText(`剩余时间: ${timeLeft}s`, 200, 68);
             
 // --- 5. 绘制胶囊滑块开关 (莫兰迪风格) ---
             ctx.save();
