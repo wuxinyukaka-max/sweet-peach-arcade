@@ -84,10 +84,16 @@
         // --- 3. 配置 ---
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const modal = document.getElementById('over-modal');
+        // --- 核心：高清适配逻辑 ---
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = 400 * dpr;
+        canvas.height = 800 * dpr;
+        ctx.scale(dpr, dpr); // 所有的画笔操作都会自动乘以 dpr
+        // -----------------------
 
-        const COLS = 10, ROWS = 16, BLOCK = 34; 
+        const COLS = 10, ROWS = 18, BLOCK = 34; 
         const GRID_X_START = (400 - COLS * BLOCK) / 2; 
-        const GAME_Y_OFFSET = 110; 
+        const GAME_Y_OFFSET = 90; 
 
         let grid, minesCount = 40, flagsUsed = 0, isGameOver = false, currentTool = 'dig', isFirstClick = true;
 
